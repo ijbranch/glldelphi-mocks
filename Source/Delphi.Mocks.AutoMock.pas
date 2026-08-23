@@ -48,6 +48,7 @@ begin
     FMocks[I] := nil;
 
   FMocks.Clear;
+  FMocks.Free;
 
   inherited;
 end;

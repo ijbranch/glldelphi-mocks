@@ -107,11 +107,8 @@ begin
 end;
 
 class destructor TMatcherFactory.Destroy;
-var
-  pair : TPair<TThreadID,TList<IMatcher>>;
 begin
-  for pair in FMatchers do
-    pair.Value.Free;
+  // FMatchers owns its values (doOwnsValues), so freeing them here as well was a double free.
   FMatchers.Free;
   FLock.Free;
 end;

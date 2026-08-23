@@ -67,7 +67,11 @@ type
     FQueryingInterface      : boolean;
     FQueryingInternalInterface : boolean;
 
-    FAutoMocker             : IAutoMock;
+    // Held weakly: the auto mock container owns this proxy via IProxy, so a strong
+    // reference back would form a cycle and neither would ever be destroyed.
+    FAutoMocker             : IWeakReference<IAutoMock>;
+    /// <summary>Resolves the weakly held auto mock container, or nil if it is gone.</summary>
+    function GetAutoMocker : IAutoMock;
 
   protected type
     TProxyVirtualInterface = class(TVirtualInterface, IInterface, IProxyVirtualInterface)
@@ -274,6 +278,14 @@ begin
   FNextFunc := nil;
 end;
 
+function TProxy.GetAutoMocker : IAutoMock;
+begin
+  if FAutoMocker <> nil then
+    Result := FAutoMocker.Data
+  else
+    Result := nil;
+end;
+
 constructor TProxy.Create(const ATypeInfo : PTypeInfo; const AAutoMocker : IAutoMock; const AIsStubOnly : boolean);
 var
   selfProxy : IProxy;
@@ -282,7 +294,10 @@ begin
 
   FName := ATypeInfo.NameStr;
 
-  FAutoMocker := AAutoMocker;
+  if AAutoMocker <> nil then
+    FAutoMocker := TWeakReference<IAutoMock>.Create(AAutoMocker)
+  else
+    FAutoMocker := nil;
   FParentProxy := nil;
   FVirtualInterface := nil;
 
@@ -441,9 +456,9 @@ begin
 
   setupParams := TSetupMethodDataParameters.Create(FIsStubOnly, FBehaviorMustBeDefined, FAllowRedefineBehaviorDefinitions);
 {$IFNDEF NEXTGEN}
-  Result := TMethodData.Create(string(FTypeInfo.Name), AMethodName, setupParams, FAutoMocker);
+  Result := TMethodData.Create(string(FTypeInfo.Name), AMethodName, setupParams, GetAutoMocker);
 {$ELSE}
-  Result := TMethodData.Create(FTypeInfo.NameFld.ToString, AMethodName, setupParams, FAutoMocker);
+  Result := TMethodData.Create(FTypeInfo.NameFld.ToString, AMethodName, setupParams, GetAutoMocker);
 {$ENDIF}
   FMethodData.Add(methodName, Result);
 end;

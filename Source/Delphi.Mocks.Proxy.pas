@@ -85,7 +85,11 @@ type
 
     FQueryingInterface      : boolean;
     FQueryingInternalInterface : boolean;
-    FAutoMocker             : IAutoMock;
+    // Held weakly: the auto mock container owns this proxy via IProxy, so a strong
+    // reference back would form a cycle and neither would ever be destroyed.
+    FAutoMocker             : IWeakReference<IAutoMock>;
+    /// <summary>Resolves the weakly held auto mock container, or nil if it is gone.</summary>
+    function GetAutoMocker : IAutoMock;
 
   protected type
     TProxyVirtualInterface = class(TVirtualInterface, IInterface, IProxyVirtualInterface)
@@ -393,13 +397,24 @@ begin
   FNextFunc := nil;
 end;
 
+function TProxy<T>.GetAutoMocker : IAutoMock;
+begin
+  if FAutoMocker <> nil then
+    Result := FAutoMocker.Data
+  else
+    Result := nil;
+end;
+
 constructor TProxy<T>.Create(const AAutoMocker : IAutoMock; const AIsStubOnly : boolean);
 var
   pInfo : PTypeInfo;
 begin
   inherited Create;
 
-  FAutoMocker := AAutoMocker;
+  if AAutoMocker <> nil then
+    FAutoMocker := TWeakReference<IAutoMock>.Create(AAutoMocker)
+  else
+    FAutoMocker := nil;
   FParentProxy := nil;
   FVirtualInterface := nil;
 
@@ -584,7 +599,7 @@ begin
     exit;
   
   setupParams := TSetupMethodDataParameters.Create(FIsStubOnly, FBehaviorMustBeDefined, FAllowRedefineBehaviorDefinitions);
-  Result := TMethodData.Create(ATypeName, AMethodName, setupParams, FAutoMocker);
+  Result := TMethodData.Create(ATypeName, AMethodName, setupParams, GetAutoMocker);
   FMethodData.Add(methodName, Result);
 end;
 
@@ -899,12 +914,19 @@ begin
 end;
 
 function TProxy<T>._Release: Integer;
+var
+  setupWasActive : boolean;
 begin
-  if FSetupMode <> TSetupMode.None then begin
+  // Decrement first, then report. Raising before the inherited call left the reference
+  // count permanently high, so the proxy and everything it owns leaked.
+  setupWasActive := FSetupMode <> TSetupMode.None;
+  if setupWasActive then
     ClearSetupState;
-    raise EMockSetupException.Create('Setup called on non-virtual method');
-  end;
+
   result := inherited;
+
+  if setupWasActive then
+    raise EMockSetupException.Create('Setup called on non-virtual method');
 end;
 
 { TProxy<T>.TProxyVirtualInterface }

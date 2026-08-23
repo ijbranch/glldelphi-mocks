@@ -34,7 +34,6 @@ Build/TestAndBuild.fb7lck
 *.rc
 *.drc
 *.map
-=======
 __history/**
 **.exe
 **.dcu
