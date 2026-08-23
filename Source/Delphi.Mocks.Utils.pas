@@ -93,8 +93,11 @@ function GetVirtualMethodCount(AClass: TClass): Integer;
 begin
   //Note that this returns all virtual methods in the class, including those from the base class.
   //Therefore anything that inherits from TObject will have atleast 12 virtual methods already
-  Result := (PInteger(Integer(AClass) + vmtClassName)^ -
-    (Integer(AClass) + vmtParent) - SizeOf(Pointer)) div SizeOf(Pointer);
+  //NativeInt, not Integer: on Win64 a class reference does not fit in 32 bits, so the old
+  //cast truncated it and the result was sign extended back into an unmapped address. The
+  //VMT slot being read is pointer sized too, so PInteger read only half of it.
+  Result := (PNativeInt(NativeInt(AClass) + vmtClassName)^ -
+    (NativeInt(AClass) + vmtParent) - SizeOf(Pointer)) div SizeOf(Pointer);
 end;
 
 //TODO : There must be a better way than this. How does Default(X) work? Couldn't find the implementation.

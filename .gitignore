@@ -1,10 +1,11 @@
 # Compiled source #
 ###################
+# .res and .rc are NOT ignored: three .dpk/.dpr files pull them in with {$R *.res},
+# so they are project metadata, not build output. GITLAK policy is to commit them.
 *.dcu
 *.obj
 *.exe
 *.mes
-*.res
 
 # Backup files    #
 ###################
@@ -31,7 +32,6 @@
 Build/TestAndBuild.fb7lck
 *.fbl7
 *.fbpInf
-*.rc
 *.drc
 *.map
 __history/**

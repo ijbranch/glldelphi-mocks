@@ -8,8 +8,8 @@ metadata:
   version: 0.3.2
   authors: [ Vincent Parrett ]
   description: Simple mocking framework for Delphi XE2 or later
-  projectUrl: https://github.com/VSoftTechnologies/Delphi-Mocks
-  repositoryUrl: https://github.com/VSoftTechnologies/Delphi-Mocks
+  projectUrl: https://codeberg.org/GITLAK/glldelphi-mocks
+  repositoryUrl: https://codeberg.org/GITLAK/glldelphi-mocks
   license: Apache-2.0
   readme: README.md
   copyright: Vincent Parrett and contributors
@@ -20,9 +20,8 @@ variables:
   packageSource: Rad Studio $compilernoprefix$
 
 targetPlatforms:
-  - compiler from: delphixe2
-    compiler to: delphi13.0
-    platforms: [ win32, win64 ]
+  - compiler: delphi13.0
+    platforms: [ win64 ]
 
 templates:
   - name: default

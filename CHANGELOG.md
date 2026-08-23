@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The entire object-proxy feature crashed on Win64, taking out 24 of 166 tests with access violations reading a sign-extended address (2026-08-24) - `Source/Delphi.Mocks.Utils.pas`
+  **Why:** `GetVirtualMethodCount` cast a class reference with `Integer(AClass)`, truncating a 64 bit pointer to 32 bits so it was sign extended back into unmapped memory, and read the pointer-sized VMT slot through a `PInteger`, getting half of it. Both are now `NativeInt`. The suite went from 132 passed / 1 failed / 23 errored to 156 passed / 0 failed / 0 errored.
+- The test project did not compile on Delphi 13: seven `Assert.AreEqual(n, Length(...))` calls could no longer infer a single generic argument now that `Length` returns `NativeInt` (2026-08-24) - `Tests/Delphi.Mocks.Tests.InterfaceProxy.pas`, `Tests/Delphi.Mocks.Tests.ObjectProxy.pas`, `Tests/Delphi.Mocks.Examples.Matchers.pas`
+- The test project wrote its `.dcu` files into the project directory itself, which is why stale DUnitX units accumulated in `Tests\` (2026-08-24) - `Tests/Delphi.Mocks.Tests.dproj`
+- `.res` and `.rc` are no longer ignored; three `.dpk`/`.dpr` files pull them in with `{$R *.res}` (2026-08-24) - `.gitignore`, `packages/RAD Studio 13.0/VSoft.DelphiMocksR.res`
+
+### Changed
+
+- Scoped the fork to Delphi 13 (Florence), 64 bit Windows only, matching `gllDUnitX` (2026-08-24)
+- The test project now resolves DUnitX from a sibling `gllDUnitX` checkout via the `DUNITX` property, with a `CheckDUnitX` target that fails with an actionable message (2026-08-24) - `Tests/Delphi.Mocks.Tests.dproj`
+
+### Removed
+
+- The fourteen pre-D13 package folders, the legacy `DelphiMocks`/`DelphiMocksXE5`/`DelphiMocks104` packages under `Source`, `Tests/MemoryLeakTest` (Win32, classic DUnit, vendored FastMM4), the FinalBuilder projects with hard-coded `I:\` paths, and the stale JSON `.dspec` superseded by the `.yaml` (2026-08-24)
 - Debug and Release package artefacts no longer overwrite each other (2026-08-24) - `packages/RAD Studio 13.0/VSoft.DelphiMocksR.dproj`
   **Why:** RAD Studio defaults the .bpl and .dcp output paths to `$(BDSCOMMONDIR)\Bpl\$(Platform)` and `\Dcp\$(Platform)`, neither carrying `$(Config)`, so a Debug build silently replaced the Release artefacts. Both now include `$(Config)`, matching the `.dcu` output that was already separated.
 - The 12 `W1029` "Duplicate constructor ... will be inaccessible from C++" warnings that `TExpectation`
