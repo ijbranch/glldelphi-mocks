@@ -4,6 +4,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [In-Service]
 
+### Changed
+
+- The DPM package id is now `GITLAK.DelphiMocks`, not `VSoft.DelphiMocks`, so this fork cannot shadow upstream in a package feed. Description records the upstream baseline (0.3.2) and the Delphi 13 / Win64 scope; GITLAK Software added to `authors`, with Vincent Parrett's authorship and copyright retained as Apache-2.0 requires (2026-08-24) - `VSoft.DelphiMocks.dspec.yaml`
+
 > Libraries and packages are continuously deployed: changes below are live as soon as the package is rebuilt and installed - there is no separate release step, so no `[Unreleased]` backlog. Tagged version snapshots are listed beneath.
 
 ### Fixed

@@ -4,10 +4,10 @@
 min client version: 1.0
 # metadata describes the package to the user
 metadata:
-  id: VSoft.DelphiMocks
+  id: GITLAK.DelphiMocks
   version: 0.3.2
-  authors: [ Vincent Parrett ]
-  description: Simple mocking framework for Delphi XE2 or later
+  authors: [ Vincent Parrett, GITLAK Software ]
+  description: GITLAK fork of Delphi-Mocks, baselined on VSoft.DelphiMocks 0.3.2 and scoped to Delphi 13 (Florence), 64 bit Windows only
   projectUrl: https://codeberg.org/GITLAK/glldelphi-mocks
   repositoryUrl: https://codeberg.org/GITLAK/glldelphi-mocks
   license: Apache-2.0
