@@ -35,8 +35,10 @@ uses
   Delphi.Mocks.Interfaces,
   Delphi.Mocks.Utils;
 
-//NOTE : To disable warnings about c++ compatibility Add the following to your dpr
-//{$WARN DUPLICATE_CTOR_DTOR OFF}
+// TExpectation deliberately declares name-only overloaded constructors. C++ constructors
+// are unnamed, so they collide there, but they are valid in Delphi. The directive must sit
+// in this unit: {$WARN} in a consuming .dpr does not affect how this unit is compiled.
+{$WARN DUPLICATE_CTOR_DTOR OFF}
 
 type
   TExpectation = class(TInterfacedObject,IExpectation)
