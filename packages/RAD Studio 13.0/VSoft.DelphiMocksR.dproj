@@ -39,7 +39,7 @@
     <PropertyGroup Condition="'$(Base)'!=''">
         <DllSuffix>$(Auto)</DllSuffix>
         <DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
-        <DCC_CBuilderOutput>All</DCC_CBuilderOutput>
+        <DCC_CBuilderOutput>None</DCC_CBuilderOutput>
         <GenPackage>true</GenPackage>
         <GenDll>true</GenDll>
         <RuntimeOnlyPackage>true</RuntimeOnlyPackage>
