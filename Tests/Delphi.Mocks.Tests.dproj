@@ -509,6 +509,6 @@
     </PropertyGroup>
     <Target Name="CheckDUnitX" BeforeTargets="Build">
         <Error Condition="!Exists('$(DUNITX)\DUnitX.TestFramework.pas')"
-               Text="DUnitX was not found at &apos;$(DUNITX)&apos;. Clone https://codeberg.org/GITLAK-forks/gllDUnitX as a sibling of this repository, or set the DUNITX property or environment variable to its Source folder." />
+               Text="DUnitX was not found at &apos;$(DUNITX)&apos;. Clone https://github.com/ijbranch/gllDUnitX as a sibling of this repository, or set the DUNITX property or environment variable to its Source folder." />
     </Target>
 </Project>

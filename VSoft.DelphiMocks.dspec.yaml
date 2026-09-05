@@ -8,8 +8,8 @@ metadata:
   version: 0.3.2
   authors: [ Vincent Parrett, GITLAK Software ]
   description: GITLAK fork of Delphi-Mocks, baselined on VSoft.DelphiMocks 0.3.2 and scoped to Delphi 13 (Florence), 64 bit Windows only
-  projectUrl: https://codeberg.org/GITLAK-forks/glldelphi-mocks
-  repositoryUrl: https://codeberg.org/GITLAK-forks/glldelphi-mocks
+  projectUrl: https://github.com/ijbranch/glldelphi-mocks
+  repositoryUrl: https://github.com/ijbranch/glldelphi-mocks
   license: Apache-2.0
   readme: README.md
   copyright: Vincent Parrett and contributors
