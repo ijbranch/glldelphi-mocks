@@ -6,7 +6,7 @@
 			<Base>True</Base>
 			<Config Condition="'$(Config)'==''">TestInsight</Config>
 			<Platform Condition="'$(Platform)'==''">Win64</Platform>
-			<TargetedPlatforms>2</TargetedPlatforms>
+			<TargetedPlatforms>3</TargetedPlatforms>
 			<AppType>Application</AppType>
 			<MainSource>Delphi.Mocks.Tests.dpr</MainSource>
 		</PropertyGroup>
