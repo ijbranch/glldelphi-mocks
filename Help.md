@@ -10,7 +10,7 @@ Target: **Delphi 13 / RAD Studio 37.0**, VCL-free (the runtime package requires 
 
 This file is the **lookup** document: the public surface unit by unit, the exception messages,
 and the failures by symptom. For a walked-through first test, read
-[Users%20Guide.md](Users%20Guide.md). Upstream's own description and the parameter-matcher list
+[Users Guide.md](Users%20Guide.md). Upstream's own description and the parameter-matcher list
 are in [README.md](README.md); what this fork changed is in [CHANGELOG.md](CHANGELOG.md).
 
 ---
