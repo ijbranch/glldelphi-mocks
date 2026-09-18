@@ -4,6 +4,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Reviewed and deliberately NOT taken from upstream, so they are not re-derived later
+
+- **Upstream swept 2026-09-18: `AutoMockV2` reviewed, nothing taken.** This fork is **0 commits
+  behind both `upstream/master` and `upstream/Development`**; `AutoMockV2` is an abandoned **2015**
+  feature branch, eleven years behind upstream's own tip.
+  - `928ca09` "removed param matchers which was copied by accident" - **REFUSED, and it would
+    break the build.** Its only source content removes `Delphi.Mocks.ParamMatcher` from four
+    `uses` clauses, but that unit is LIVE here and referenced by eight units
+    (`Delphi.Mocks.pas`, `.Behavior`, `.Expectation`, `.Interfaces`, `.MethodData`, `.Proxy`,
+    `.Proxy.TypeInfo`). We have also fixed a real defect inside it - `TMatcherFactory` freeing
+    matcher lists the dictionary already owns (`doOwnsValues`), a double free on any aborted
+    `Setup`. Upstream itself reversed the "copied by accident" judgement when Development was
+    merged back. The remainder is XE8-era `.dproj` churn, pre-D13.
+  - `2cbaae6` - a merge whose unique content is exactly `928ca09`'s three deletions. REFUSED.
+  **Condition to reopen:** none. The branch is abandoned and its one idea was reversed upstream.
+
 ### Fixed
 
 - `TargetedPlatforms` brought into line with the `<Platforms>` block in 5 `.dproj` (2026-09-10)
