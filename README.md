@@ -35,6 +35,14 @@ Usage is easy:
   mock.Setup.WillReturn(3).When.SimpleFunction(It0.IsEqualTo<String>('hello'));
 ```
 
+## Documentation
+
+| For | Read |
+|---|---|
+| The API reference — TMock<T>, TStub<T>, the setup and expectation interfaces, and the six exception classes with their messages | [Help.md](Help.md) |
+| Doing a job — mock an interface, set expectations, verify, stub a class | [Users Guide.md](Users%20Guide.md) |
+| What changed and when | [CHANGELOG.md](CHANGELOG.md) |
+
 ## Class matching
 Some more attention should be payed for matching classes. Usage of `.IsAny<TMyClass>` will not work as might be expected, because `nil` (which is the default return value of `IsAny<T>`) is always a good match. Therefore the following setup will fail on the second line, because the framework will think that there is already behavior defined (in the first line).
 

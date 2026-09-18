@@ -4,6 +4,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **`Help.md` and `Users Guide.md`, to the estate documentation standard** (2026-09-18).
+  `Help.md` is predominantly an API reference — this is a library people write test code
+  against — with member tables for `TMock<T>`, `TStub<T>`, `IStubSetup<T>`, `IMockSetup<T>`,
+  `IExpect<T>`, `ItRec`, `TAutoMockContainer` and `TComparer`, plus the six exception classes
+  with their verbatim messages, and a problem-reference section beside it.
+  `Users Guide.md` is task-ordered: mock an interface, set expectations, verify, stub a class.
+
+### Fixed
+
+- **Two `Assert.WillNotRaise` sites pass an exception class, which makes them unable to fail on
+  anything else** (2026-09-18) — `Tests\Delphi.Mocks.Tests.MethodData.pas:91` and `:184`, both
+  `Assert.WillNotRaise( ..., EMockSetupException )`. Recorded, not changed.
+  Our `gllDUnitX` fork tests `e.ClassType = exceptionClass` — an exact match, not `is` — so the
+  assertion **swallows** anything that is not precisely that class, an `EAccessViolation`
+  included. These two happen to behave, because the five mock exception classes all descend
+  **directly** from `EMockException` and none is a descendant of another; the correct form is
+  `Assert.WillNotRaiseAny`.
+  **The wider point is about the sweep, not these two sites.** The estate record states that a
+  2026-09-16 sweep found all 19 `WillNotRaise` sites passing no class and therefore correct —
+  that sweep covered four repositories and this was not one of them.
+- **`Tests\Delphi.Mocks.Tests.dpr` does not set `Assert.IgnoreCaseDefault := False`**
+  (2026-09-18), so this suite carries the fork's weak default and every two-argument string
+  comparison in it is case-insensitive. `Test_WillReturnDefault` in
+  `Delphi.Mocks.Tests.Stubs.pas` is a live example.
+- **`CHANGELOG.md`'s "Known Issues" contradicts its own "Removed" entry and the tree**
+  (2026-09-18). It says the repository "still carries 15 RAD Studio package folders, legacy
+  packages under `Source`, and Win32/OSX/mobile targets", and that it "has not been scoped down
+  the way `gllDUnitX` was". The same file records those fourteen folders and the legacy `Source`
+  packages as deleted, and the tree agrees: only `packages\RAD Studio 13.0\` exists, `Source\`
+  holds 16 `.pas` and one `.inc` with no packages, and both `.dproj` declare Win32+Win64 only.
+  The other two Known Issues — the `ReturnTypePatch` shadow fields and the `ObjectProxy`
+  unconditional free — were re-checked and are still true.
+
 ### Reviewed and deliberately NOT taken from upstream, so they are not re-derived later
 
 - **Upstream swept 2026-09-18: `AutoMockV2` reviewed, nothing taken.** This fork is **0 commits
