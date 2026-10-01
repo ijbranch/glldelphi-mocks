@@ -484,7 +484,7 @@ begin
         Exit;
     end;
 
-    {$Message 'TODO: Need to query the parent, but exclude ourselves and any other children which have already been called.'}
+    // TODO: Need to query the parent, but exclude ourselves and any other children which have already been called.
 
     //Call the parent.
     if FParentProxy <> nil then

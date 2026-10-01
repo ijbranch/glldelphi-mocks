@@ -227,7 +227,7 @@ begin
 
   for AMethCreate in rType.GetMethods do
   begin
-    {$Message 'TODO Handle constructors with params.'}
+    // TODO Handle constructors with params.
 
     if (AMethCreate.IsConstructor) and (Length(AMethCreate.GetParameters) = 0) then
     begin

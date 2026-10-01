@@ -434,8 +434,6 @@ var
   proxyI : IProxy<I>;
   pInfo : PTypeInfo;
 begin
-  result := nil;
-
   CheckCreated;
 
   //Does the proxy we have, or any of its children support a proxy for the passed

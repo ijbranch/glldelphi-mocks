@@ -55,6 +55,14 @@ type
     function Equals(AItem: TObject): Boolean; override;
   end;
 
+  /// <summary>GITLAK: the instantiable form of TMyClass, so the comparison tests no longer construct a class
+  /// that still has an abstract method (W1020); TMyClass itself stays abstract for the RTTI tests.</summary>
+  TMyConcreteClass = class(TMyClass)
+  public
+    /// <summary>Does nothing; exists only to make the class concrete.</summary>
+    procedure AbstractMethod; override;
+  end;
+
   TMyRec = record
     Value: String;
 
@@ -142,8 +150,8 @@ procedure TTestTValue.Test_CompareValue_ObjectEquals;
 var
   o1, o2: TMyClass;
 begin
-  o1 := TMyClass.Create(1);
-  o2 := TMyClass.Create(1);
+  o1 := TMyConcreteClass.Create(1);
+  o2 := TMyConcreteClass.Create(1);
   try
     Assert.AreEqual(0, CompareValue(TValue.From<TMyClass>(o1), TValue.From<TMyClass>(o1)));
     Assert.AreEqual(0, CompareValue(TValue.From<TMyClass>(o2), TValue.From<TMyClass>(o2)));
@@ -158,8 +166,8 @@ procedure TTestTValue.Test_CompareValue_ObjectNotEquals;
 var
   o1, o2: TMyClass;
 begin
-  o1 := TMyClass.Create(1);
-  o2 := TMyClass.Create(2);
+  o1 := TMyConcreteClass.Create(1);
+  o2 := TMyConcreteClass.Create(2);
   try
     Assert.AreEqual(0, CompareValue(TValue.From<TMyClass>(o1), TValue.From<TMyClass>(o1)));
     Assert.AreEqual(0, CompareValue(TValue.From<TMyClass>(o2), TValue.From<TMyClass>(o2)));
@@ -286,6 +294,13 @@ begin
 end;
 
 procedure TMyClass.VirtualMethod;
+begin
+  //No op
+end;
+
+{ TMyConcreteClass }
+
+procedure TMyConcreteClass.AbstractMethod;
 begin
   //No op
 end;

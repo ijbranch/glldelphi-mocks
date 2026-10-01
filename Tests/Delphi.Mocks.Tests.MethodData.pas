@@ -88,13 +88,13 @@ begin
       result := true;
     end)]);
 
-    Assert.WillNotRaise(procedure
+    Assert.WillNotRaiseAny(procedure
     begin
       methodData.NeverWhen([nil, someParam], [TMatcher<TAndAnotherObject>.Create(function(value : TAndAnotherObject) : boolean
       begin
         result := true;
       end)]);
-    end, EMockSetupException);
+    end);
   finally
     LObjectToTest.Free;
     LAnotherObject.Free;
@@ -181,14 +181,15 @@ begin
       result := true;
     end)]);
 
-    Assert.WillNotRaise(procedure
+    Assert.WillNotRaiseAny(procedure
     begin
       methodData.WillReturnWhen([nil, someParam], someValue2, [TMatcher<TAndAnotherObject>.Create(function(value : TAndAnotherObject) : boolean
       begin
         result := true;
       end)]);
-    end, EMockSetupException);
+    end);
   finally
+    LObjectToTest.Free;
     LAnotherObject.Free;
     LAndAnotherObject.Free;
   end;

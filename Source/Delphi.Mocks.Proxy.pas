@@ -143,7 +143,7 @@ type
 
     function Expect : IExpect<T>;
 
-    {$Message 'TODO: Implement ISetup.Before and ISetup.After.'}
+    // TODO: Implement ISetup.Before and ISetup.After.
     function WillReturn(const value : TValue) : IWhen<T>; overload;
     function WillReturn(const value : TValue; const AllowNil: Boolean) : IWhen<T>; overload;
     procedure WillReturnDefault(const AMethodName : string; const value : TValue);
@@ -456,7 +456,6 @@ end;
 procedure TProxy<T>.DoInvoke(Method: TRttiMethod; const Args: TArray<TValue>; out Result: TValue);
 var
   methodData : IMethodData;
-  behavior : IBehavior;
   pInfo : PTypeInfo;
   matchers : TArray<IMatcher>;
 begin

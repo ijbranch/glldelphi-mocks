@@ -91,9 +91,7 @@ uses
   SysUtils,
   TypInfo,
   Delphi.Mocks,
-{$IFDEF DELPHI_XE8_UP}
   System.Hash,
-{$ENDIF}
   Delphi.Mocks.ParamMatcher;
 
 
@@ -214,11 +212,7 @@ begin
     end,
     function(const Value: TRecordToTest): Integer
     begin
-{$IFDEF DELPHI_XE8_UP}
       Result := THashBobJenkins.GetHashValue(PChar(Value.internalValue)^, SizeOf(Char) * Length(Value.internalValue), 0);
-{$ELSE}
-      Result := BobJenkinsHash(PChar(Value.internalValue)^, SizeOf(Char) * Length(Value.internalValue), 0);
-{$ENDIF}
     end);
 end;
 

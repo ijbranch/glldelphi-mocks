@@ -43,7 +43,8 @@ uses
   Delphi.Mocks.Tests.Utils in 'Delphi.Mocks.Tests.Utils.pas',
   Delphi.Mocks.Utils.Tests in 'Delphi.Mocks.Utils.Tests.pas',
   Delphi.Mocks.Examples.Matchers in 'Delphi.Mocks.Examples.Matchers.pas',
-  Delphi.Mocks.Tests.Stubs in 'Delphi.Mocks.Tests.Stubs.pas';
+  Delphi.Mocks.Tests.Stubs in 'Delphi.Mocks.Tests.Stubs.pas',
+  Delphi.Mocks.Tests.ReturnTypePatch in 'Delphi.Mocks.Tests.ReturnTypePatch.pas';
 
 {$R *.RES}
 
@@ -107,6 +108,8 @@ begin
   try
     //Check command line options, will exit if invalid
     TDUnitX.CheckCommandLine;
+    //Two-argument string assertions compare case-sensitively; a test that does not care passes True
+    Assert.IgnoreCaseDefault := False;
     //Create the test runner
     runner := TDUnitX.CreateRunner;
     //Tell the runner to use RTTI to find Fixtures
@@ -138,7 +141,11 @@ begin
     {$ENDIF}
   except
     on E: Exception do
+    begin
       System.Writeln(E.ClassName, ': ', E.Message);
+      //A run that dies before reporting must not exit 0 and read as a pass
+      System.ExitCode := EXIT_ERRORS;
+    end;
   end;
 
 

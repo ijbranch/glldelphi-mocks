@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **`Tests\Delphi.Mocks.Tests.ReturnTypePatch.pas` - three tests over `Delphi.Mocks.ReturnTypePatch`**
+  (2026-10-02). That unit shadows private `System.Rtti` fields to patch RTTI, and had no test and no
+  consumer, so an Embarcadero layout change would have broken it with nothing to notice. Now one test
+  proves the input reaches the code (a method returning a gapped enumeration, which has no type
+  information, really does report a nil return type) and two prove each patch route makes RTTI report
+  the patched type, the by-name one also checking the parameters it walks past are intact.
+  **Mutation-proved:** swapping the shadow `FParameters`/`FReturnType` declarations, which is exactly
+  the silent break the Known Issue describes, turns both patch tests red. Suite 166 -> 169, diffed by
+  test name: the three new tests and nothing else.
 - **`Help.md` and `Users Guide.md`, to the estate documentation standard** (2026-09-18).
   `Help.md` is predominantly an API reference — this is a library people write test code
   against — with member tables for `TMock<T>`, `TStub<T>`, `IStubSetup<T>`, `IMockSetup<T>`,
@@ -15,9 +24,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Every hint and warning in the package, the test suite and `Sample1` cleared** (2026-10-02) -
+  `Source\Delphi.Mocks.pas`, `Source\Delphi.Mocks.Proxy.pas`, `Source\Delphi.Mocks.Proxy.TypeInfo.pas`,
+  `Examples\Delphi.Mocks.Examples.Factory.pas`, `Tests\Delphi.Mocks.Examples.Factory.pas`,
+  `Tests\Delphi.Mocks.Examples.Matchers.pas`, `Tests\Delphi.Mocks.Tests.Utils.pas`,
+  `packages\RAD Studio 13.0\VSoft.DelphiMocksR.dproj`. Each build printed 24 warnings and 4 hints.
+  - `H2077` in `TMock<T>.Instance<I>`: a `result := nil` every path overwrites or raises past. Deleted.
+  - `H2164` in `TProxy<T>.DoInvoke`: the local `behavior` was never used. Deleted.
+  - `H1054` x3: `{$Message 'TODO ...'}` turned each reminder into a hint on every build. Kept as
+    `// TODO` comments, so the note survives without the noise.
+  - `W1029` x24 (duplicate constructors "inaccessible from C++"): `DCC_DUPLICATE_CTOR_DTOR=false` in the
+    package project, the estate's one sanctioned suppression, as C++Builder is never in scope. The test
+    runner already carried `{$WARN DUPLICATE_CTOR_DTOR OFF}`.
+  - `W1000` `BobJenkinsHash` deprecated: the test guarded the modern call with `DELPHI_XE8_UP`, which
+    nothing defines (`Delphi.Mocks.inc` defines `HAS_SYSTEM_HASH`), so the deprecated branch was
+    always the one compiled. Resolved to `THashBobJenkins.GetHashValue` unconditionally.
+  - `W1020` x4: the comparison tests constructed `TMyClass`, which keeps an abstract method for the
+    `IsAbstract` RTTI tests. They now construct a new concrete descendant, `TMyConcreteClass`.
+  Verified with clean builds: package four modes, test suite Win64 Debug and Release, `Sample1`.
+- **A test run that died before reporting exited 0** (2026-10-02) - `Tests\Delphi.Mocks.Tests.dpr`.
+  The runner's `except` printed the exception and left `ExitCode` alone, so a crash in setup or
+  discovery read as a pass to anything gating on the exit code. It now sets `EXIT_ERRORS`.
+- **`AllowRedefineBehaviorDefinitions_IsTrue_NoExceptionIsThrown_WhenMatcherAreDifferent` leaked its
+  `TObjectToTest`** (2026-10-02) - `Tests\Delphi.Mocks.Tests.MethodData.pas`. Its `finally` freed two
+  of the three objects it created; its sibling test frees all three.
+- **Duplicate `Generics.Defaults` in `Delphi.Mocks.pas`'s implementation `uses`** (2026-10-02) - taken
+  from upstream `53cd36b` (#156) by `git cherry-pick -x`; the interface section already names
+  `System.Generics.Defaults`. A scan of every `.pas`/`.dpr` in the repository for the same shape (one
+  unit named both qualified and unqualified in one unit's `uses` clauses) found no other instance.
 - **Two `Assert.WillNotRaise` sites pass an exception class, which makes them unable to fail on
-  anything else** (2026-09-18) — `Tests\Delphi.Mocks.Tests.MethodData.pas:91` and `:184`, both
-  `Assert.WillNotRaise( ..., EMockSetupException )`. Recorded, not changed.
+  anything else** (2026-09-18; **fixed 2026-10-02**: both are now `Assert.WillNotRaiseAny`) —
+  `Tests\Delphi.Mocks.Tests.MethodData.pas:91` and `:184`, both
+  `Assert.WillNotRaise( ..., EMockSetupException )`.
   Our `gllDUnitX` fork tests `e.ClassType = exceptionClass` — an exact match, not `is` — so the
   assertion **swallows** anything that is not precisely that class, an `EAccessViolation`
   included. These two happen to behave, because the five mock exception classes all descend
@@ -30,6 +68,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (2026-09-18), so this suite carries the fork's weak default and every two-argument string
   comparison in it is case-insensitive. `Test_WillReturnDefault` in
   `Delphi.Mocks.Tests.Stubs.pas` is a live example.
+  **Fixed 2026-10-02:** the runner now sets it before the run. No test went red: 156 passed before
+  and after, so nothing here had been relying on the weak default.
 - **`CHANGELOG.md`'s "Known Issues" contradicts its own "Removed" entry and the tree**
   (2026-09-18). It says the repository "still carries 15 RAD Studio package folders, legacy
   packages under `Source`, and Win32/OSX/mobile targets", and that it "has not been scoped down
@@ -38,9 +78,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   holds 16 `.pas` and one `.inc` with no packages, and both `.dproj` declare Win32+Win64 only.
   The other two Known Issues — the `ReturnTypePatch` shadow fields and the `ObjectProxy`
   unconditional free — were re-checked and are still true.
+  **Fixed 2026-10-02:** the stale bullet is deleted from Known Issues.
 
 ### Reviewed and deliberately NOT taken from upstream, so they are not re-derived later
 
+- **Upstream swept 2026-10-02: watermark `53cd36b` (2026-10-01, `upstream/master`).** The one new
+  commit, `53cd36b`, was TAKEN (see `### Fixed`); real shared history exists, so it went in by
+  cherry-pick. This fork is again 0 commits behind `upstream/master`.
 - **Upstream swept 2026-09-18: `AutoMockV2` reviewed, nothing taken.** This fork is **0 commits
   behind both `upstream/master` and `upstream/Development`**; `AutoMockV2` is an abandoned **2015**
   feature branch, eleven years behind upstream's own tip.
@@ -136,6 +180,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Known Issues
 
-- `Delphi.Mocks.ReturnTypePatch.pas` shadow-declares private `System.Rtti` fields to patch RTTI. The layout still matches RAD Studio 37.0, but this breaks silently if Embarcadero reorders them.
+- `Delphi.Mocks.ReturnTypePatch.pas` shadow-declares private `System.Rtti` fields to patch RTTI. The layout still matches RAD Studio 37.0. Since 2026-10-02 a reorder no longer breaks silently: `Tests\Delphi.Mocks.Tests.ReturnTypePatch.pas` goes red (mutation-proved).
 - `Delphi.Mocks.ObjectProxy.pas` frees the wrapped instance unconditionally, even when the caller supplied it. Changing that is an ownership contract change, so it is left alone deliberately.
-- The repo still carries 15 RAD Studio package folders, legacy packages under `Source`, and Win32/OSX/mobile targets. It has not been scoped down the way `gllDUnitX` was.

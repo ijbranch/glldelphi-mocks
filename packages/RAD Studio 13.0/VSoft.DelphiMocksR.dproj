@@ -40,6 +40,7 @@
         <DllSuffix>$(Auto)</DllSuffix>
         <DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
         <DCC_CBuilderOutput>None</DCC_CBuilderOutput>
+        <DCC_DUPLICATE_CTOR_DTOR>false</DCC_DUPLICATE_CTOR_DTOR>
         <GenPackage>true</GenPackage>
         <GenDll>true</GenDll>
         <RuntimeOnlyPackage>true</RuntimeOnlyPackage>
