@@ -101,10 +101,6 @@ var
   logger : ITestLogger;
   nunitLogger : ITestLogger;
 begin
-{$IFDEF TESTINSIGHT}
-  TestInsight.DUnitX.RunRegisteredTests;
-  exit;
-{$ENDIF}
   try
     //Check command line options, will exit if invalid
     TDUnitX.CheckCommandLine;

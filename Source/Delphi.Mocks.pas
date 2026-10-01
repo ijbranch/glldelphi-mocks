@@ -310,10 +310,8 @@ uses
   Delphi.Mocks.ParamMatcher,
   Delphi.Mocks.AutoMock,
   Delphi.Mocks.Validation,
-  Delphi.Mocks.Helpers
-{$IFDEF HAS_SYSTEM_HASH}
-  ,System.Hash
-{$ENDIF};
+  Delphi.Mocks.Helpers,
+  System.Hash;
 
 procedure TMock<T>.CheckCreated;
 var
@@ -652,11 +650,7 @@ end;
 
 function TTypeInfoHelper.NameStr: string;
 begin
-{$IFNDEF NEXTGEN}
   result := string(Self.Name);
-{$ELSE}
-  result := Self.NameFld.ToString;
-{$ENDIF}
 end;
 
 { TAutoMockContainer }
@@ -747,11 +741,7 @@ begin
         end,
         function(const Value: T): Integer
         begin
-{$IFDEF HAS_SYSTEM_HASH}
           Result := THashBobJenkins.GetHashValue(Value, SizeOf(Value));
-{$ELSE}
-          Result := BobJenkinsHash(Value, SizeOf(Value), 0);
-{$ENDIF}
         end);
     end;
 end;

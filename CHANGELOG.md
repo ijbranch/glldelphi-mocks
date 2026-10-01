@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **`Test_CanStubMethodDeclaredOnlyInAncestor`, and a real assertion in `Test_CanStubInheritedMethods`**
+  (2026-10-02) - `Tests\Delphi.Mocks.Tests.Stubs.pas`. The upstream test stubbed `TStringList.Add` and
+  asserted nothing, so it could not fail. It now asserts the stubbed value comes back (7, where the real
+  `Add` on an empty list returns 0) and that the list stays empty. `TStringList` overrides `Add`, so a
+  second test stubs `Answer` on `TStubDescendant`, which inherits it from `TStubAncestor` without
+  overriding it. **Mutation-proved twice** in `Delphi.Mocks.ObjectProxy.pas`: intercepting only methods
+  whose RTTI parent is `T` turns both red, and ignoring the stubbed behaviour turns both red (plus the
+  existing `VirtualMethodNotCalledIfBehaviorMatches`). Suite 169 -> 170.
 - **`Tests\Delphi.Mocks.Tests.ReturnTypePatch.pas` - three tests over `Delphi.Mocks.ReturnTypePatch`**
   (2026-10-02). That unit shadows private `System.Rtti` fields to patch RTTI, and had no test and no
   consumer, so an Embarcadero layout change would have broken it with nothing to notice. Now one test
@@ -24,6 +32,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Pre-D13 and non-Windows conditionals resolved away** (2026-10-02) - `Source\Delphi.Mocks.inc`,
+  `Source\Delphi.Mocks.pas`, `Source\Delphi.Mocks.Proxy.TypeInfo.pas`, `Source\Delphi.Mocks.WeakReference.pas`.
+  `HAS_SYSTEM_HASH` (`CompilerVersion > 28.0`) is constant on D13 Win32 and Win64: its `{$DEFINE}` is gone
+  from the include, `System.Hash` is used unconditionally, and the `BobJenkinsHash` fallback is deleted.
+  `NEXTGEN` is never defined for Windows, so its three blocks keep the non-NEXTGEN branch. The include's
+  XE2 `{$IF}` guard stays: a header guard is exactly what this kind of sweep must leave. Verified by
+  compiling, all four package modes clean.
+- **Stale `TestInsight` build configuration removed; Debug is the default** (2026-10-02) -
+  `Tests\Delphi.Mocks.Tests.dproj`, `Tests\Delphi.Mocks.Tests.dpr`. TestInsight was removed from the IDE on
+  2026-09-29, and this config never defined `TESTINSIGHT`, so it was Debug under another name and sent
+  IDE builds to `Win64\TestInsight`. The dead `{$IFDEF TESTINSIGHT}` runner block went with it.
+  Win32 is now deactivated (`TargetedPlatforms` 3 -> 2), as for every DUnitX suite in the estate: a Win32
+  build fails `F2613 Unit 'DUnitX.TestFramework' not found`, because the IDE's Win32 library path carries
+  no DUnitX. The project's own `DUNITX` fallback (`..\..\gllDUnitX\Source`) cannot rescue it: it is set
+  at the END of the file, after `DCC_UnitSearchPath` has already expanded `$(DUNITX)`, so command-line
+  builds resolve DUnitX only through the IDE's `DUNITX` environment variable and Win64 library path.
 - **Every hint and warning in the package, the test suite and `Sample1` cleared** (2026-10-02) -
   `Source\Delphi.Mocks.pas`, `Source\Delphi.Mocks.Proxy.pas`, `Source\Delphi.Mocks.Proxy.TypeInfo.pas`,
   `Examples\Delphi.Mocks.Examples.Factory.pas`, `Tests\Delphi.Mocks.Examples.Factory.pas`,

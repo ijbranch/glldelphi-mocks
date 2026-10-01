@@ -36,8 +36,5 @@
   Unsupported Compiler Version (Delphi XE2 or later required!)
 {$ENDIF}
 
-{$IF CompilerVersion > 28.0} // XE8 up
-  {$DEFINE HAS_SYSTEM_HASH}
-{$IFEND}
 
 
