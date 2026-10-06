@@ -32,6 +32,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **An in-IDE build re-saved the package `.dproj` without its Release output paths** (2026-10-07) — `packages/RAD
+  Studio 13.0/VSoft.DelphiMocksR.dproj`. The output standard was two `Condition`-ed `DCC_BplOutput` / `DCC_DcpOutput`
+  lines in the Base group, and the IDE keeps one value per property per group when it re-saves the project on a build,
+  so it wrote back only the active config's: a committed re-save sent Release builds to the root `Bpl` / `Dcp`
+  folders. Now one plain value per group, the form the IDE writes itself: Base
+  `$(BDSCOMMONDIR)\Bpl\$(Platform)\$(Config)` (and `Dcp`), overridden in the Release config group by
+  `$(BDSCOMMONDIR)\Bpl\$(Platform)`. Same output; built in all four modes with the `dcc` `-LE`/`-LN` paths checked per
+  mode.
 - **Pre-D13 and non-Windows conditionals resolved away** (2026-10-02) - `Source\Delphi.Mocks.inc`,
   `Source\Delphi.Mocks.pas`, `Source\Delphi.Mocks.Proxy.TypeInfo.pas`, `Source\Delphi.Mocks.WeakReference.pas`.
   `HAS_SYSTEM_HASH` (`CompilerVersion > 28.0`) is constant on D13 Win32 and Win64: its `{$DEFINE}` is gone
