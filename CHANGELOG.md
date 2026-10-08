@@ -144,6 +144,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **D13 language features adopted** (2026-10-08) - `Source/Delphi.Mocks.Validation.pas`, `Source/Delphi.Mocks.pas`. 2 `not ( X in S )` / `not ( X is T )` rewritten as `X not in S` / `X is not T` (generated code byte-identical: every project that built before was rebuilt and compared). **Divergence accepted:** upstream was reviewed first (nothing pending was lost), and Ian's ruling for the gll* forks is that they "are our forks now", to be made "as correct as possible/practical"; these lines will need re-applying or resolving in any later upstream port.
 - Project platforms normalised to Win32 + Win64 only in 3 `.dproj` files (2026-09-10)
   Non-Windows targets (`Android`, `Android64`, `iOS*`, `OSX*`, `Linux64`) and the
   `Win64x` / `WinARM64EC` variants were removed together with their `Base_<Plat>` and

@@ -36,7 +36,7 @@ end;
 
 class procedure TMocksValidation.CheckMockType(const ATypeInfo: PTypeInfo);
 begin
-  if not (ATypeInfo.Kind in [tkInterface,tkClass]) then
+  if ATypeInfo.Kind not in [tkInterface,tkClass] then
     raise EMockException.Create(ATypeInfo.NameStr + ' is not an Interface or Class. TMock<T> supports interfaces and classes only');
 
   case ATypeInfo.Kind of

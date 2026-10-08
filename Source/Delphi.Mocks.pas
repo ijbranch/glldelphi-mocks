@@ -587,7 +587,7 @@ begin
 
   pInfo := TypeInfo(T);
 
-  if not (pInfo.Kind in [tkInterface,tkClass]) then
+  if pInfo.Kind not in [tkInterface,tkClass] then
     raise EMockException.Create(pInfo.NameStr + ' is not an Interface or Class. TStub<T> supports interfaces and classes only');
 
   case pInfo.Kind of
