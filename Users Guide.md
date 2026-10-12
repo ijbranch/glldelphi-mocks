@@ -88,7 +88,10 @@ intend to mock must be `virtual`:
 ```
 
 The class must also have a `Create` constructor, or you get
-`Could not find constructor Create on type <T>`.
+`Could not find constructor Create on type <T>`. A class with no virtual method at all is refused
+with `<T> declares no virtual methods, so there is nothing a mock can intercept`. Destructors and
+overrides of `AfterConstruction`, `BeforeDestruction` and `FreeInstance` are never intercepted —
+they always run the class's own code.
 
 ---
 
@@ -99,7 +102,6 @@ Taken from `Examples\Delphi.Mocks.Examples.Interfaces.pas`, which is a complete 
 ```pascal
 uses
   SysUtils,
-  DUnitX.TestFramework,
   Delphi.Mocks;
 
 procedure TMockObjectTests.Simple_Interface_Mock;
@@ -176,7 +178,7 @@ The value is a `TValue`, so anything assignable to one works. A few variations:
 | You want | Write |
 |---|---|
 | a value for one specific call | `WillReturn( v ).When.Method( args )` |
-| a value for every other call | `WillReturnDefault( 'Method', v )` |
+| a value for every other call | `WillReturnDefault( 'Method', v )` — nil or empty is allowed, and on a class mock it stops the real virtual method running |
 | nil, deliberately | `WillReturnNil.When.Method( args )` |
 | nil, and nil is a legitimate answer | `WillReturn( v, True ).When.Method( args )` |
 | to compute the answer | `WillExecute( func ).When.Method( args )` |
@@ -197,6 +199,20 @@ return one.
 `Setup.WillReturn called on [<kind>] method [<M>] which does not have a return value.` Use
 `WillExecute`.
 
+**Where two setups overlap, the later one wins.** A general setup first and a specific one after
+it reads naturally and works:
+
+```pascal
+mock.Setup.WillReturn( 0 ).When.Foo( It0.IsAny<Integer> );
+mock.Setup.WillReturn( 1 ).When.Foo( 3 );   // Foo(3) returns 1, any other value 0
+```
+
+That is not an "already defines" error: only a setup that repeats an earlier one exactly — same
+kind, literal arguments, equal values — is a redefinition, and a matcher-based setup never is.
+Between *kinds* the order is fixed, whatever order you wrote them in: `WillRaise( 'Method', … )`,
+then `WillRaise…When`, `WillExecute( 'Method', … )`, `WillExecute…When`, `WillReturn…When`, and
+last the `WillReturnDefault` value.
+
 ---
 
 ## 6. Make the mock raise
@@ -209,6 +225,9 @@ mock.Setup.WillRaise( 'SimpleMethod', ESimpleException );   // always, any argum
 The method-name form **trumps every other behaviour defined for that method** — that is stated in
 the source and is the intended semantic, not a quirk. It is how you test the failure path of a
 dependency without being able to make the real thing fail.
+
+The `When` form (and `WillRaiseWhen`) raises only for a call whose arguments match, and raises with
+the message you gave it; any other call falls through to the next behaviour.
 
 ---
 
@@ -235,6 +254,16 @@ mock.Setup.Expect.Before( 'Commit' ).When.Prepare;
 mock.Setup.Expect.After( 'Open' ).When.Read;
 ```
 
+The first is met when both `Prepare` and `Commit` were called and `Prepare`'s first matching call
+came before `Commit`'s first call; `After` is the mirror image. The method-name forms
+`Before( 'Prepare', 'Commit' )` and `After( 'Read', 'Open' )` do the same for any arguments. Order
+is tracked per proxy, so it does not compare calls made on an interface added with
+`Implement<I>` against calls on the main one.
+
+The method-name and `When` forms are separate expectations: `Expect.Once( 'M' )` alongside
+`Expect.Once.When.M( 1 )` is two expectations, not a clash. `Between( a, b )` with `b < a` can never
+be met and raises `EMockSetupException` at setup.
+
 Then:
 
 ```pascal
@@ -250,7 +279,8 @@ Assert.AreEqual( '', mock.CheckExpectations, False );
 ```
 
 `VerifyAll` verifies across every interface the mock implements; `ResetCalls` forgets the calls
-recorded so far, which lets one mock serve two phases of a test.
+recorded so far, which lets one mock serve two phases of a test. `ResetCalls` and `Expect.Clear`
+both reach the interfaces added with `Implement<I>` too, as `VerifyAll` does.
 
 ---
 
@@ -272,15 +302,17 @@ worth knowing early:
 | `IsAny<T>` | "I do not care what was passed" |
 | `IsEqualTo<T>( v )` | a specific value, optionally with your own `IEqualityComparer<T>` |
 | `Matches<T>( predicate )` | anything you can express as a `TPredicate<T>` |
-| `IsInRange<T>( a, b )` | a numeric or ordinal range |
+| `IsInRange<T>( a, b )` | an inclusive range, in `TComparer<T>.Default` order |
 | `IsIn<T>` / `IsNotIn<T>` | membership of an array or an `IEnumerable<T>` |
 | `IsRegex( pattern )` | a string parameter |
 | `AreSameFieldsThat<T>` / `AreSamePropertiesThat<T>` | an object equal field-by-field or property-by-property rather than by identity |
 
 ### Two traps, both real
 
-**Matchers are all-or-nothing per call.** Mix a matcher and a literal in the same call and you get
-`Setup called with Matchers but on all parameters : <Method>`. Wrap the literal:
+**Matchers are all-or-nothing per call.** Mix a matcher and a literal in the same call and the
+setup raises `EMockSetupException` —
+`Setup of [<Method>] used matchers for <n> of its <m> parameters. Use a matcher (It0..It9) for every parameter, or for none.`
+This holds for behaviour and expectation setups alike. Wrap the literal:
 
 ```pascal
 // wrong
@@ -289,22 +321,24 @@ mock.Setup.Expect.Once.When.M( It0.IsAny<Integer>, 'literal' );
 mock.Setup.Expect.Once.When.M( It0.IsAny<Integer>, It1.IsEqualTo<string>( 'literal' ) );
 ```
 
-**`IsAny<T>` for a class parameter matches everything, including the next setup you write.**
-`IsAny<T>` returns the default value of `T`, which for a class is `nil` — and `nil` is a good
-match for anything. So this fails on the second line, because the framework thinks behaviour is
-already defined:
+**Each `ItN` once per setup, numbered by position.** Using the same index twice — `It0` copied
+onto the second parameter — raises `EMockSetupException`:
+`A matcher was already given for parameter 0. …`. A matcher evaluated anywhere other than inside
+a `When` call is discarded at the next ordinary call, so it cannot leak into a later setup.
 
-```pascal
-mock.Setup.Expect.Never.When.ExtendedMethod( It0.IsAny<TMyClass> );
-mock.Setup.Expect.Never.When.ExtendedMethod( It0.IsAny<TMyOtherClass> );
-```
-
-Use `IsNotNil<T>` for class parameters:
+Upstream had a third trap here — two `Never.When.ExtendedMethod( It0.IsAny<…> )` setups for
+different classes failing on the second line as an "already defined" behaviour. **This fork
+accepts both**: a matcher-based setup is never a redefinition. `IsAny<T>` still returns `nil` for a
+class, and `IsNotNil<T>` is still the matcher to use when a nil argument must not match:
 
 ```pascal
 mock.Setup.Expect.Never.When.ExtendedMethod( It0.IsNotNil<TMyClass> );
 mock.Setup.Expect.Never.When.ExtendedMethod( It0.IsNotNil<TMyOtherClass> );
 ```
+
+**How literal arguments compare.** Strings ordinally (case matters), floats exactly, records
+without an `=` operator field by field, interfaces by COM identity; sets, pointers, class
+references and method pointers by value. The full list is in [Help.md](Help.md#how-literal-arguments-are-compared).
 
 ---
 
@@ -339,8 +373,10 @@ var
 begin
   stub := TStub<TStringList>.Create;
   stub.Setup.BehaviorMustBeDefined := False;
-  stub.Setup.WillReturnDefault( 'Add', 0 );
-  stub.Instance.Add( '2' );
+  stub.Setup.WillReturnDefault( 'Add', 7 );
+  // the real Add on an empty list returns 0 and adds a line; the stub must do neither
+  Assert.AreEqual( 7, stub.Instance.Add( '2' ) );
+  Assert.AreEqual( 0, stub.Instance.Count );
 end;
 ```
 
@@ -364,7 +400,9 @@ mock.VerifyAll;
 ```
 
 `Implement<I>` twice for the same interface raises `EMockProxyAlreadyImplemented` —
-`The mock already implements <I>`.
+`The mock already implements <I>`. Only a mock of an **interface** can implement further
+interfaces: on a mock of a class, `Implement<I>` raises `ENotSupportedException` naming both
+types. `Verify<I>` for an `I` never added raises `EMockNoProxyException`.
 
 When there are simply **many** dependencies, `TAutoMockContainer` creates and owns them for you:
 
@@ -373,6 +411,10 @@ var container := TAutoMockContainer.Create;
 var mockA := container.Mock<IA>;
 var mockB := container.Mock<IB>;
 ```
+
+A mock the container created also answers a method that returns an **interface**, when nothing is
+set up for that call, with a mock of that interface — the same instance for the same arguments.
+Classes and records are not auto mocked. A container used before `Create` raises `EMockException`.
 
 ---
 
@@ -391,8 +433,9 @@ casing is the point — and with a mock returning a canned string it often is �
 Assert.AreEqual( 'hello', actual, False );
 ```
 
-`Tests\Delphi.Mocks.Tests.dpr` does not set `Assert.IgnoreCaseDefault := False`, so this suite
-carries the weak default. `Test_WillReturnDefault` above is an instance of it.
+`Tests\Delphi.Mocks.Tests.dpr` sets `Assert.IgnoreCaseDefault := False`, so in this suite
+`Test_WillReturnDefault` above does compare case-sensitively. A suite of your own carries the weak
+default unless its `.dpr` does the same.
 
 **`Assert.WillNotRaise( proc, SomeClass, msg )` swallows everything that is not exactly that
 class.** The fork's body is `if e.ClassType = exceptionClass then Fail` — an `=` on `ClassType`,
@@ -408,7 +451,12 @@ almost always what it is. `Assert.WillNotRaiseDescendant` covers the narrower ca
 
 `TMock<T>` and `TStub<T>` are **records**. Nothing needs freeing and there is no `try..finally`
 around them. `Free` exists on both, but the source's own comment beside it reads "Not sure if we
-really need this."
+really need this." Calling it twice is harmless; any other use of the record before `Create` or
+after `Free` raises `EMockException` — `TMock<T> was used before Create, or after Free.`
+
+If the system under test keeps the mocked instance and calls it after the mock has been released,
+the call raises `EMockException` — `[<T>].<M> was called after the mock that created it was
+freed.` — rather than an access violation. Keep the mock alive as long as the instance is used.
 
 The one place ownership is not what you expect: **a mock of a class frees the wrapped instance
 unconditionally**, even when you supplied it through `TMock<T>.Create( ACreateObjectFunc )`. Do
@@ -425,7 +473,7 @@ patch RTTI. The layout still matches RAD Studio 37.0, but if Embarcadero reorder
 
 Build `Tests\Delphi.Mocks.Tests.dproj` and run the executable. It is a DUnitX console runner that
 sets `runner.UseRTTI := True` **and** the fixtures also register themselves explicitly with
-`TDUnitX.RegisterTestFixture` — 18 `[TestFixture]` attributes across 16 units, and 21 explicit
+`TDUnitX.RegisterTestFixture` — 21 `[TestFixture]` attributes across 19 units, and 23 explicit
 registrations. **Keep both mechanisms.** Turning `UseRTTI` off does not prevent a double run — our
 fork dedupes a fixture registered both ways — it silently *deletes* the fixtures that have only the
 attribute.
@@ -433,6 +481,13 @@ attribute.
 The runner sets `runner.FailsOnNoAsserts := False` and exits `EXIT_ERRORS` when anything failed,
 so the process exit code is usable in a pipeline. Pass an XML output file through DUnitX's own
 options to get an NUnit-format report.
+
+### Run the examples
+
+`Examples\Sample1.dproj` is a console program that runs every example unit — `Factory`,
+`Implement`, `Interfaces`, `Matchers` and `Objects` — and each checks its own result. It pauses on
+`ReadLn` at the end; pass any command-line parameter to skip the pauses and run it unattended. A
+failure prints the exception and exits 1.
 
 ---
 

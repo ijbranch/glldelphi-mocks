@@ -16,7 +16,7 @@ RTTI-based mocking framework for Delphi.
 What this fork changed - fixes, tests that can now fail when they should, the return-type patch and its
 tests - is in [CHANGELOG.md](CHANGELOG.md); [Help.md](Help.md) is the reference and
 [Users Guide.md](Users%20Guide.md) walks through a first test. The rest of this file is upstream's own
-description, kept as it was apart from its version note.
+description, kept as it was apart from its version note and a fork note under *Class matching*.
 
 # Delphi Mocks
 
@@ -78,6 +78,11 @@ This can easily be solved by using `.IsNotNil<TMyClass>`:
   mock.Setup.Expect.Never.When.ExtendedMethod(It0.IsNotNil<TMyClass>);
   mock.Setup.Expect.Never.When.ExtendedMethod(It0.IsNotNil<TMyOtherClass>);
 ```
+
+> **This fork:** the first pair of setups above no longer fails. Setup compares definitions, not calls, and a
+> matcher-based setup is never a redefinition, so both are accepted. `IsNotNil<T>` is still the matcher to use when
+> a nil argument must not match. See [Help.md](Help.md) for the rest of this fork's matcher rules (all or none per
+> setup, each `ItN` once).
 
 # Example
 
@@ -159,6 +164,10 @@ end;
 
 end.
 ```
+
+**This fork:** the example above is upstream's, written as a DUnitX fixture. The fork's copy,
+[Examples\Delphi.Mocks.Examples.Interfaces.pas](Examples/Delphi.Mocks.Examples.Interfaces.pas), needs no DUnitX:
+`Examples\Sample1` runs it, with every other example, and each one checks its own result.
 
 # Licence
 
