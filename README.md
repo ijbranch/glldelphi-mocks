@@ -1,6 +1,27 @@
+# glldelphi-mocks
+
+GITLAK Software's fork of [Delphi Mocks](https://github.com/VSoftTechnologies/Delphi-Mocks), Vincent Parrett's
+RTTI-based mocking framework for Delphi.
+
+> **Scope.** This fork targets **Delphi 13 (Florence), Windows only - Win32 and Win64**; pre-D13 and non-Windows
+> code has been removed. Use [upstream Delphi Mocks](https://github.com/VSoftTechnologies/Delphi-Mocks) for anything
+> else. Its main consumer is [gllDUnitX](https://github.com/ijbranch/gllDUnitX), whose test project builds against it.
+>
+> **Not affiliated with VSoft Technologies.** This is an independent fork; credit for Delphi Mocks belongs to
+> Vincent Parrett and its contributors - see *Licence* at the foot of this file.
+>
+> **Without support.** Maintained for GITLAK Software's own use; it does not take pull requests. A fix to Delphi
+> Mocks itself belongs upstream.
+
+What this fork changed - fixes, tests that can now fail when they should, the return-type patch and its
+tests - is in [CHANGELOG.md](CHANGELOG.md); [Help.md](Help.md) is the reference and
+[Users Guide.md](Users%20Guide.md) walks through a first test. The rest of this file is upstream's own
+description, kept as it was apart from its version note.
+
 # Delphi Mocks
 
-Delphi Mocks is a simple mocking framework for Delphi XE2 or later. It makes use of RTTI features that are only available in Delphi XE2. See the example at the bottom of the space for a complete explanation.
+Delphi Mocks is a simple mocking framework for Delphi. It makes use of RTTI features first available in Delphi
+XE2 (this fork requires Delphi 13). See the example at the bottom of the page for a complete explanation.
 
 # Parameter matching
 
@@ -138,3 +159,17 @@ end;
 
 end.
 ```
+
+# Licence
+
+Apache License 2.0 - see [LICENSE.txt](LICENSE.txt). Delphi Mocks: Copyright (C) 2011+ Vincent Parrett and
+contributors; their commits keep their authors in this fork's history.
+
+**This fork.** Changes made in glldelphi-mocks are Copyright (C) 2026 Ian Branch (GITLAK Software) and are licensed
+under the same Apache License 2.0. Every source file this fork changed carries a
+"Modified (C) 2026 Ian Branch (GITLAK Software)" line beneath its original copyright notice, which is kept intact;
+a unit the fork added carries its own header. The changes were developed with
+[Claude Code](https://claude.com/claude-code), Anthropic's AI coding assistant, which wrote much of the fork's code,
+tests and documentation under Ian Branch's direction; commits it contributed to carry a `Co-Authored-By: Claude`
+trailer. glldelphi-mocks is an independent fork and is not affiliated with or endorsed by VSoft Technologies;
+"Delphi Mocks" refers to the upstream project it derives from.

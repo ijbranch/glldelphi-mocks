@@ -3,6 +3,7 @@
 {           Delphi Mocks - Taken from DUnitX Project                        }
 {                                                                           }
 {           Copyright (C) 2013 Vincent Parrett                              }
+{           Modified (C) 2026 Ian Branch (GITLAK Software)                  }
 {                                                                           }
 {           vincent@finalbuilder.com                                        }
 {           http://www.finalbuilder.com                                     }

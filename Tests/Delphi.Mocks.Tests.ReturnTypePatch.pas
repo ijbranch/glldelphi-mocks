@@ -1,4 +1,16 @@
-﻿unit Delphi.Mocks.Tests.ReturnTypePatch;
+﻿{***************************************************************************}
+{                                                                           }
+{           glldelphi-mocks                                                 }
+{                                                                           }
+{           Copyright (C) 2026 Ian Branch (GITLAK Software)                 }
+{           Added in the glldelphi-mocks fork of Delphi Mocks               }
+{                                                                           }
+{           Licensed under the Apache License, Version 2.0                  }
+{           http://www.apache.org/licenses/LICENSE-2.0                      }
+{                                                                           }
+{***************************************************************************}
+
+unit Delphi.Mocks.Tests.ReturnTypePatch;
 
 { GITLAK addition (2026-10-02). Delphi.Mocks.ReturnTypePatch reaches into the private layout of
   System.Rtti's TRttiIntfMethod through a shadow class, so an Embarcadero change to that layout
