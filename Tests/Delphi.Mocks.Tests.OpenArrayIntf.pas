@@ -1,4 +1,4 @@
-unit Delphi.Mocks.Tests.OpenArrayIntf;
+﻿unit Delphi.Mocks.Tests.OpenArrayIntf;
 
 interface
 
@@ -7,23 +7,39 @@ uses
 
 type
   {$M+}
+  /// <summary>Tests mocking methods that take arrays.</summary>
   [TestFixture]
   TestIOpenArray = class
   published
+    /// <summary>Proves a setup on an open array parameter followed by another parameter matches the call and
+    /// returns its value.</summary>
     procedure TestMyMethodDynamicArray;
+    /// <summary>Proves a setup on a typed dynamic array parameter matches the call and returns its value.
+    /// </summary>
     procedure TestMyMethodTypedArray;
   end;
   {$M-}
 
+  /// <summary>A typed dynamic array.</summary>
   TMyArray = array of Integer;
 
   {$M+}
+  /// <summary>An interface taking an open array and another parameter.</summary>
   IDynamicArray = interface
     // This crashes: One open array + one more parameter. Only the open array works.
+    /// <summary>Takes an open array.</summary>
+    /// <param name="MyArray">The array.</param>
+    /// <param name="Number">A number.</param>
+    /// <returns>Whatever the mock is set up to return.</returns>
     function MyMethod(MyArray: array of Integer; Number: Integer): Integer;
   end;
 
+  /// <summary>An interface taking a typed dynamic array.</summary>
   ITypedArray = interface
+    /// <summary>Takes a typed array.</summary>
+    /// <param name="MyArray">The array.</param>
+    /// <param name="Number">A number.</param>
+    /// <returns>Whatever the mock is set up to return.</returns>
     function MyMethod(MyArray: TMyArray; Number: Integer): Integer;
 
   end;

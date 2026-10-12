@@ -24,9 +24,9 @@
 {                                                                           }
 {***************************************************************************}
 
- //Basic Version of Compiler Supported - XE2 Minimum
+ //Basic Version of Compiler Supported - Delphi 13 Minimum (this fork has no pre-D13 code)
 {$IFDEF CONDITIONALEXPRESSIONS}  //Started being defined with D2009
-   {$IF CompilerVersion < 23.0} // Before RAD Studio XE2
+   {$IF CompilerVersion < 37.0} // Before Delphi 13
       {$DEFINE UNSUPPORTED_COMPILER_VERSION}
    {$IFEND}
 {$ELSE}
@@ -34,7 +34,7 @@
 {$ENDIF}
 
 {$IFDEF UNSUPPORTED_COMPILER_VERSION}
-  Unsupported Compiler Version (Delphi XE2 or later required!)
+  Unsupported Compiler Version (Delphi 13 or later required!)
 {$ENDIF}
 
 

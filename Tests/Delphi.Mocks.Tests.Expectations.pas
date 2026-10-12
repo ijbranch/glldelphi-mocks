@@ -1,4 +1,4 @@
-unit Delphi.Mocks.Tests.Expectations;
+﻿unit Delphi.Mocks.Tests.Expectations;
 
 interface
 
@@ -11,70 +11,110 @@ uses
 
 type
   {$M+}
+  /// <summary>Tests TExpectation on its own: what each constructor makes, and when each kind is met.</summary>
   [TestFixture]
   TTestExpectations = class
   protected
+    /// <summary>An empty matcher list, for expectations that match literal arguments.</summary>
     FMatchers : TArray<IMatcher>;
   published
     //Created with correct exception type set
+    /// <summary>Proves CreateOnceWhen makes a OnceWhen expectation, which counts only matching calls.</summary>
     procedure CreateOnceWhen_Expectation_Type_Set_To_OnceWhen;
+    /// <summary>Proves CreateOnce makes a Once expectation.</summary>
     procedure CreateOnce_Expectation_Type_Set_To_Once;
+    /// <summary>Proves CreateNeverWhen makes a NeverWhen expectation.</summary>
     procedure CreateNeverWhen_Expectation_Type_Set_To_NeverWhen;
+    /// <summary>Proves CreateNever makes a Never expectation.</summary>
     procedure CreateNever_Expectation_Type_Set_To_Never;
+    /// <summary>Proves CreateAtLeastOnceWhen makes an AtLeastOnceWhen expectation.</summary>
     procedure CreateAtLeastOnceWhen_Expectation_Type_Set_To_AtLeastOnceWhen;
+    /// <summary>Proves CreateAtLeastOnce makes an AtLeastOnce expectation.</summary>
     procedure CreateAtLeastOnce_Expectation_Type_Set_To_AtLeastOnce;
+    /// <summary>Proves CreateAtLeastWhen makes an AtLeastWhen expectation.</summary>
     procedure CreateAtLeastWhen_Expectation_Type_Set_To_AtLeastWhen;
+    /// <summary>Proves CreateAtLeast makes an AtLeast expectation.</summary>
     procedure CreateAtLeast_Expectation_Type_Set_To_AtLeast;
+    /// <summary>Proves CreateAtMostWhen makes an AtMostWhen expectation.</summary>
     procedure CreateAtMostWhen_Expectation_Type_Set_To_AtMostWhen;
+    /// <summary>Proves CreateAtMost makes an AtMost expectation.</summary>
     procedure CreateAtMost_Expectation_Type_Set_To_AtMost;
+    /// <summary>Proves CreateBetweenWhen makes a BetweenWhen expectation.</summary>
     procedure CreateBetweenWhen_Expectation_Type_Set_To_BetweenWhen;
+    /// <summary>Proves CreateBetween makes a Between expectation.</summary>
     procedure CreateBetween_Expectation_Type_Set_To_Between;
+    /// <summary>Proves CreateExactlyWhen makes an ExactlyWhen expectation.</summary>
     procedure CreateExactlyWhen_Expectation_Type_Set_To_ExactlyWhen;
+    /// <summary>Proves CreateExactly makes an Exactly expectation.</summary>
     procedure CreateExactly_Expectation_Type_Set_To_Exactly;
+    /// <summary>Proves CreateBeforeWhen makes a BeforeWhen expectation.</summary>
     procedure CreateBeforeWhen_Expectation_Type_Set_To_BeforeWhen;
+    /// <summary>Proves CreateBefore makes a Before expectation.</summary>
     procedure CreateBefore_Expectation_Type_Set_To_Before;
+    /// <summary>Proves CreateAfterWhen makes an AfterWhen expectation.</summary>
     procedure CreateAfterWhen_Expectation_Type_Set_To_AfterWhen;
+    /// <summary>Proves CreateAfter makes an After expectation.</summary>
     procedure CreateAfter_Expectation_Type_Set_To_After;
 
     //ExpectationMet after record hit tests
+    /// <summary>Proves OnceWhen is met by exactly one hit.</summary>
     procedure ExpectationMet_With_OnceWhen_CalledOnce;
+    /// <summary>Proves OnceWhen is not met with no hit.</summary>
     procedure ExpectationNotMet_With_OnceWhen_CalledNever;
+    /// <summary>Proves ResetCalls forgets the hit, so OnceWhen is unmet again.</summary>
     procedure ExpectationNotMet_With_OnceWhen_CalledOnceAndResetCalls;
 
+    /// <summary>Proves Never is met with no hit.</summary>
     procedure ExpectationMet_With_Never_CalledNever;
+    /// <summary>Proves Never is broken by one hit.</summary>
     procedure ExpectationNotMet_With_Never_CalledOnce;
 
+    /// <summary>Proves AtLeastOnce is met by one hit and still by two.</summary>
     procedure ExpectationMet_With_AtLeastOnce_CalledOnceAndTwoTimes;
+    /// <summary>Proves AtLeastOnce is unmet with no hit.</summary>
     procedure ExpectationNotMet_With_AtLeastOnce_CalledNever;
 
+    /// <summary>Proves AtLeast(2) is met at the boundary and above it.</summary>
     procedure ExpectationMet_With_AtLeast2_CalledTwoTimeAndThreeTimes;
+    /// <summary>Proves AtLeast(2) is unmet below the boundary.</summary>
     procedure ExpectationNotMet_With_AtLeast2_CalledNeverAndOnce;
 
+    /// <summary>Proves AtMost(2) is met from no hit up to the boundary.</summary>
     procedure ExpectationMet_With_AtMost2_CalledNeverOnceAndTwoTimes;
+    /// <summary>Proves AtMost(2) is broken above the boundary.</summary>
     procedure ExpectationNotMet_With_AtMost2_CalledThreeTimes;
 
+    /// <summary>Proves Between(0, 4) is met with no hit: the lower bound is inclusive.</summary>
     procedure ExpectationMet_With_Between_0to4_CalledNever;
+    /// <summary>Proves Between(1, 4) is met by one hit.</summary>
     procedure ExpectationMet_With_Between_1to4_CalledOnce;
+    /// <summary>Proves Between(1, 4) is unmet with no hit.</summary>
     procedure ExpectationNotMet_With_Between_1to4_CalledNever;
 
+    /// <summary>Proves Exactly(2) is met by two hits.</summary>
     procedure ExpectationMet_With_Exactly2_Called2Times;
+    /// <summary>Proves Exactly(2) is unmet with no hit.</summary>
     procedure ExpectationMet_With_Exactly2_CalledNever;
+    /// <summary>Proves Exactly(2) is unmet below and above the count.</summary>
     procedure ExpectationMet_With_Exactly2_CalledOnceAnd3Times;
 
-    [Test, Ignore]
+    /// <summary>Proves After is met when the method is first called after the other method's first call.</summary>
     procedure ExpectationMet_With_After;
-    [Test, Ignore]
+    /// <summary>Proves After is unmet when the method is first called before the other method, or the other is never called.</summary>
     procedure ExpectationNotMet_With_After;
 
-    [Test, Ignore]
+    /// <summary>Proves Before is met when the method is first called before the other method's first call.</summary>
     procedure ExpectationMet_With_Before;
-    [Test, Ignore]
+    /// <summary>Proves Before is unmet when the method is first called after the other method, or the other is never called.</summary>
     procedure ExpectationNotMet_With_Before;
   end;
   {$M-}
 
 
 implementation
+
+uses
+  Delphi.Mocks.MethodData;
 
 { TTestExpectations }
 
@@ -462,23 +502,66 @@ begin
 end;
 
 procedure TTestExpectations.ExpectationMet_With_After;
+var
+  callLog : ICallLog;
+  expectation : IExpectation;
 begin
-  Assert.Fail('Expectation for After/AfterWhen doesn''t work yet');
+  callLog := TCallLog.Create;
+  expectation := TExpectation.CreateAfter('Read', 'Open', callLog);
+  Assert.IsFalse(expectation.ExpectationMet, 'Unmet before any call');
+
+  callLog.RecordCall('Open');
+  callLog.RecordCall('Read');
+  expectation.RecordHit;
+
+  Assert.IsTrue(expectation.ExpectationMet, expectation.Report);
 end;
 
 procedure TTestExpectations.ExpectationNotMet_With_After;
+var
+  callLog : ICallLog;
+  expectation : IExpectation;
 begin
-  Assert.Fail('Expectation for After/AfterWhen doesn''t work yet');
+  callLog := TCallLog.Create;
+  expectation := TExpectation.CreateAfter('Read', 'Open', callLog);
+  callLog.RecordCall('Read');
+  expectation.RecordHit;
+  Assert.IsFalse(expectation.ExpectationMet, 'Open never called');
+
+  callLog.RecordCall('Open');
+  Assert.IsFalse(expectation.ExpectationMet, 'Read was first called before Open');
+  Assert.AreNotEqual('', expectation.Report);
 end;
 
 procedure TTestExpectations.ExpectationMet_With_Before;
+var
+  callLog : ICallLog;
+  expectation : IExpectation;
 begin
-  Assert.Fail('Expectation for Before/BeforeWhen doesn''t work yet');
+  callLog := TCallLog.Create;
+  expectation := TExpectation.CreateBefore('Prepare', 'Commit', callLog);
+
+  callLog.RecordCall('Prepare');
+  expectation.RecordHit;
+  Assert.IsFalse(expectation.ExpectationMet, 'Unmet while Commit has not been called');
+  callLog.RecordCall('Commit');
+
+  Assert.IsTrue(expectation.ExpectationMet, expectation.Report);
 end;
 
 procedure TTestExpectations.ExpectationNotMet_With_Before;
+var
+  callLog : ICallLog;
+  expectation : IExpectation;
 begin
-  Assert.Fail('Expectation for Before/BeforeWhen doesn''t work yet');
+  callLog := TCallLog.Create;
+  expectation := TExpectation.CreateBefore('Prepare', 'Commit', callLog);
+
+  callLog.RecordCall('Commit');
+  callLog.RecordCall('Prepare');
+  expectation.RecordHit;
+
+  Assert.IsFalse(expectation.ExpectationMet, 'Prepare was first called after Commit');
 end;
 
 initialization

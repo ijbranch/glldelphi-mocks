@@ -1,4 +1,4 @@
-{***************************************************************************}
+﻿{***************************************************************************}
 {                                                                           }
 {           Delphi Mocks                                                    }
 {                                                                           }
@@ -21,29 +21,53 @@ uses
 type
   //Testing TValue helper methods in TValueHelper
   {$M+}
+  /// <summary>Tests the TValue comparison helpers that decide whether a mocked call's arguments match a setup,
+  /// and the RTTI method tests the proxies rely on.</summary>
   [TestFixture]
   TTestTValue = class
   published
+    /// <summary>Proves one interface reference compares equal to itself, so an interface argument can match.
+    /// </summary>
     procedure Test_TValue_Equals_Interfaces;
+    /// <summary>Proves two different objects' interfaces compare unequal.</summary>
     procedure Test_TValue_NotEquals_Interfaces;
+    /// <summary>Proves two separately built strings with the same text compare equal.</summary>
     procedure Test_TValue_Equals_Strings;
+    /// <summary>Proves strings with different text compare unequal.</summary>
     procedure Test_TValue_NotEquals_Strings;
 
+    /// <summary>Proves a GUID compares equal to a copy of itself.</summary>
     procedure Test_TValue_Equals_SameGuid_Instance;
+    /// <summary>Proves two GUIDs parsed separately from the same text compare equal, and that a GUID differing only
+    /// in its last byte does not, so every byte is compared.</summary>
     procedure Test_TValue_Equals_DifferentGuid_Instance;
+    /// <summary>Proves different GUIDs compare unequal.</summary>
     procedure Test_TValue_NotEquals_Guid;
 
+    /// <summary>Proves IsAbstract tells an abstract method from a normal or virtual one, which decides whether a
+    /// class mock runs the real method.</summary>
     procedure Test_TRttiMethod_IsAbstract;
+    /// <summary>Proves IsVirtual tells a virtual method from a static one, which decides whether a class mock can
+    /// intercept it.</summary>
     procedure Test_TRttiMethod_IsVirtual;
 
+    /// <summary>Proves records with an = operator compare equal through it, with strings built at run time so the
+    /// compiler cannot merge them.</summary>
     procedure Test_CompareValue_RecordEquals;
+    /// <summary>Proves records with an = operator compare unequal through it.</summary>
     procedure Test_CompareValue_RecordNotEquals;
+    /// <summary>Proves records without an = operator compare field by field: different contents unequal, equal
+    /// contents built at run time equal. They used to compare equal whatever they held.</summary>
     procedure Test_CompareValue_RecordNoEqualsOperator;
 
+    /// <summary>Proves arrays with the same elements compare equal.</summary>
     procedure Test_CompareValue_ArrayEquals;
+    /// <summary>Proves arrays differing in length compare unequal in either order.</summary>
     procedure Test_CompareValue_ArrayNotEquals;
 
+    /// <summary>Proves objects compare equal through their Equals override.</summary>
     procedure Test_CompareValue_ObjectEquals;
+    /// <summary>Proves objects whose Equals says they differ compare unequal.</summary>
     procedure Test_CompareValue_ObjectNotEquals;
   end;
   {$M-}
@@ -54,16 +78,26 @@ uses
   SysUtils;
 
 type
+  /// <summary>A class with a normal, an abstract and a virtual method, compared by its value.</summary>
   TMyClass = class
   private
+    /// <summary>The value Equals compares.</summary>
     FValue: Integer;
   public
+    /// <summary>A static method.</summary>
     procedure NormalMethod;
+    /// <summary>An abstract method.</summary>
     procedure AbstractMethod; virtual; abstract;
+    /// <summary>A virtual method.</summary>
     procedure VirtualMethod; virtual;
 
+    /// <summary>Creates the object.</summary>
+    /// <param name="AValue">The value Equals compares.</param>
     constructor Create(AValue: Integer);
 
+    /// <summary>Compares by value.</summary>
+    /// <param name="AItem">The other object.</param>
+    /// <returns>True when AItem is a TMyClass with the same value.</returns>
     function Equals(AItem: TObject): Boolean; override;
   end;
 
@@ -75,13 +109,21 @@ type
     procedure AbstractMethod; override;
   end;
 
+  /// <summary>A record with an = operator.</summary>
   TMyRec = record
+    /// <summary>The compared value.</summary>
     Value: String;
 
+    /// <summary>Compares by Value.</summary>
+    /// <param name="a">The first record.</param>
+    /// <param name="b">The second record.</param>
+    /// <returns>True when the values are equal.</returns>
     class operator Equal(a, b: TMyRec): Boolean;
   end;
 
+  /// <summary>A record without an = operator.</summary>
   TMySimpleRec = record
+    /// <summary>The compared value.</summary>
     Value: String;
   end;
 
@@ -106,7 +148,8 @@ var
   v1, v2 : TValue;
 begin
   s1 := 'hello';
-  s2 := 'hello';
+  s2 := 'hel';
+  s2 := s2 + 'lo';
   v1 := s1;
   v2 := s2;
   Assert.IsTrue(v1.Equals(v2));
@@ -195,7 +238,8 @@ var
   r1, r2: TMyRec;
 begin
   r1.Value := 'test';
-  r2.Value := 'test';
+  r2.Value := 'te';
+  r2.Value := r2.Value + 'st';
 
   Assert.AreEqual(0, CompareValue(TValue.From(r1), TValue.From(r2)));
 end;
@@ -207,7 +251,11 @@ begin
   r1.Value := 'test';
   r2.Value := 'test1';
 
-  Assert.AreEqual(0, CompareValue(TValue.From(r1), TValue.From(r2)));
+  Assert.AreNotEqual(0, CompareValue(TValue.From(r1), TValue.From(r2)), 'Different contents must not compare equal');
+
+  r2.Value := 'te';
+  r2.Value := r2.Value + 'st';
+  Assert.AreEqual(0, CompareValue(TValue.From(r1), TValue.From(r2)), 'Equal contents must compare equal');
 end;
 
 procedure TTestTValue.Test_CompareValue_RecordNotEquals;
@@ -248,6 +296,10 @@ begin
   v1 := TValue.From<TGUID>( s1 );
   v2 := TValue.From<TGUID>( s2 );
   Assert.IsTrue(v1.Equals(v2));
+
+  s2.D4[7] := s2.D4[7] xor 1;
+  v2 := TValue.From<TGUID>( s2 );
+  Assert.IsFalse(v1.Equals(v2), 'A GUID differing in its last byte must not compare equal');
 end;
 
 procedure TTestTValue.Test_TValue_NotEquals_Guid;

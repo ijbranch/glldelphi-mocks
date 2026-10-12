@@ -1,4 +1,4 @@
-{***************************************************************************}
+﻿{***************************************************************************}
 {                                                                           }
 {           Delphi Mocks                                                    }
 {                                                                           }
@@ -11,34 +11,13 @@
 {***************************************************************************}
 
 program Delphi.Mocks.Tests;
-{
-
-  Delphi DUnit Test Project
-  -------------------------
-  This project contains the DUnit test framework and the GUI/Console test runners.
-  Add "CONSOLE_TESTRUNNER" to the conditional defines entry in the project options
-  to use the console test runner.  Otherwise the GUI test runner will be used by
-  default.
-
-}
-
-{.$DEFINE XMLOUTPUT}
-{.$DEFINE ISCONSOLE}
-
-{$IFDEF ISCONSOLE}
-{$APPTYPE CONSOLE}
-{$ENDIF}
-
-{$WARN DUPLICATE_CTOR_DTOR OFF}
 
 uses
-  Forms,
   DUnitX.TestFramework,
   DUnitX.Loggers.Console,
   DUnitX.Windows.Console,
   DUnitX.Loggers.XML.NUnit,
   SysUtils,
-  Sample1Main in '..\Examples\Sample1Main.pas',
   Delphi.Mocks.Tests.AutoMock in 'Delphi.Mocks.Tests.AutoMock.pas',
   Delphi.Mocks.Tests.Base in 'Delphi.Mocks.Tests.Base.pas',
   Delphi.Mocks.Tests.Behavior in 'Delphi.Mocks.Tests.Behavior.pas',
@@ -56,56 +35,12 @@ uses
   Delphi.Mocks.Utils.Tests in 'Delphi.Mocks.Utils.Tests.pas',
   Delphi.Mocks.Examples.Matchers in 'Delphi.Mocks.Examples.Matchers.pas',
   Delphi.Mocks.Tests.Stubs in 'Delphi.Mocks.Tests.Stubs.pas',
-  Delphi.Mocks.Tests.ReturnTypePatch in 'Delphi.Mocks.Tests.ReturnTypePatch.pas';
+  Delphi.Mocks.Tests.ReturnTypePatch in 'Delphi.Mocks.Tests.ReturnTypePatch.pas',
+  Delphi.Mocks.Tests.Regression in 'Delphi.Mocks.Tests.Regression.pas',
+  Delphi.Mocks.Tests.RegressionNewApi in 'Delphi.Mocks.Tests.RegressionNewApi.pas';
 
 {$R *.RES}
 
-
-//{$IFDEF XMLOUTPUT}
-//var
-//  OutputFile : string = 'dunit-report.xml';
-//
-//var
-//  ConfigFile : string;
-//{$ENDIF}
-//
-//{$IFDEF ISCONSOLE}
-//var
-//  ExitBehavior: TRunnerExitBehavior;
-//{$EndIf}
-//
-//begin
-//  {$IFDEF ISCONSOLE}
-//    {$IFDEF XMLOUTPUT}
-//      if ConfigFile <> '' then
-//      begin
-//        RegisteredTests.LoadConfiguration(ConfigFile, False, True);
-//        WriteLn('Loaded config file ' + ConfigFile);
-//      end;
-//      if ParamCount > 0 then
-//        OutputFile := ParamStr(1);
-//      WriteLn('Writing output to ' + OutputFile);
-//      WriteLn('Running ' + IntToStr(RegisteredTests.CountEnabledTestCases) + ' of ' + IntToStr(RegisteredTests.CountTestCases) + ' test cases');
-//      TXMLTestListener.RunRegisteredTests(OutputFile);
-//    {$ELSE}
-//      WriteLn('To run with rxbPause, use -p switch');
-//      WriteLn('To run with rxbHaltOnFailures, use -h switch');
-//      WriteLn('No switch runs as rxbContinue');
-//
-//      if FindCmdLineSwitch('p', ['-', '/'], true) then
-//        ExitBehavior := rxbPause
-//      else if FindCmdLineSwitch('h', ['-', '/'], true) then
-//        ExitBehavior := rxbHaltOnFailures
-//      else
-//        ExitBehavior := rxbContinue;
-//
-//      TextTestRunner.RunRegisteredTests(ExitBehavior);
-//    {$ENDIF}
-//  {$ELSE}
-//  ReportMemoryLeaksOnShutdown := True;
-//  Application.Initialize;
-//  TGUITestRunner.RunRegisteredTests;
-//  {$ENDIF}
 
 var
   runner : ITestRunner;

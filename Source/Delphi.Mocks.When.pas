@@ -1,8 +1,9 @@
-{***************************************************************************}
+﻿{***************************************************************************}
 {                                                                           }
 {           Delphi.Mocks                                                    }
 {                                                                           }
 {           Copyright (C) 2011 Vincent Parrett                              }
+{           Modified (C) 2026 Ian Branch (GITLAK Software)                  }
 {                                                                           }
 {           http://www.finalbuilder.com                                     }
 {                                                                           }
@@ -31,20 +32,24 @@ uses
   Delphi.Mocks;
 
 type
+  /// <summary>The When step of a setup: holds the mocked instance, already in setup mode.</summary>
   TWhen<T> = class(TInterfacedObject,IWhen<T>)
   private
+   /// <summary>The mocked instance.</summary>
    FProxy : T;
   protected
+   /// <summary>Returns the mocked instance; the next call on it completes the setup.</summary>
+   /// <returns>The mocked instance.</returns>
    function When : T;
   public
+    /// <summary>Creates the step.</summary>
+    /// <param name="AProxy">The mocked instance.</param>
     constructor Create(const AProxy : T);
+    /// <summary>Releases the mocked instance.</summary>
     destructor Destroy;override;
   end;
 
 implementation
-
-uses
-  System.SysUtils;
 
 { TWhen<T> }
 

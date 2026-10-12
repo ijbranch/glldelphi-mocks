@@ -1,4 +1,4 @@
-unit Delphi.Mocks.Tests.TValue;
+﻿unit Delphi.Mocks.Tests.TValue;
 
 interface
 
@@ -7,9 +7,12 @@ uses
 
 type
   {$M+}
+  /// <summary>Tests the TValue kind tests the comparison helpers branch on.</summary>
   TValueTests = class
   published
+    /// <summary>Proves IsRecord is True for a record only, not a string, object or interface.</summary>
     procedure Test_IsRecord;
+    /// <summary>Proves IsArray is True for a dynamic array and not for a string.</summary>
     procedure Test_IsArray;
   end;
   {$M-}
@@ -22,7 +25,9 @@ uses
 { TValueTests }
 
 type
+  /// <summary>A record.</summary>
   TMyRec = record
+    /// <summary>A field.</summary>
     Value: String;
   end;
 

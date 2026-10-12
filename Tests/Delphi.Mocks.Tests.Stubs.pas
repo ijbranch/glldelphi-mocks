@@ -1,4 +1,4 @@
-{***************************************************************************}
+﻿{***************************************************************************}
 {                                                                           }
 {           Delphi Mocks                                                    }
 {                                                                           }
@@ -18,10 +18,14 @@ uses
   DUnitX.TestFramework;
 type
   {$M+}
+  /// <summary>Tests TStub&lt;T&gt;.</summary>
   [TestFixture]
   TStubTests = class
   published
+    /// <summary>Proves a stub of an interface returns its WillReturnDefault value for any arguments.</summary>
     procedure Test_WillReturnDefault;
+    /// <summary>Proves a stub of a class replaces an inherited virtual method: the default is returned and the
+    /// real method's side effect does not happen.</summary>
     procedure Test_CanStubInheritedMethods;
     /// <summary>GITLAK: proves a stub intercepts a virtual method the class does not declare at all, only its
     /// ancestor does. TStringList overrides Add, so the test above cannot tell that case apart.</summary>
@@ -42,7 +46,11 @@ type
   TStubDescendant = class(TStubAncestor)
   end;
 
+  /// <summary>An interface to stub.</summary>
   ITestable = interface
+    /// <summary>A function.</summary>
+    /// <param name="value">An argument.</param>
+    /// <returns>Whatever the stub is set up to return.</returns>
     function DoSomething(const value : string) : string;
   end;
   {$M-}
@@ -95,7 +103,7 @@ begin
   stub.Setup.WillReturnDefault('DoSomething','hello');
   intf := stub.Instance;
   actual := intf.DoSomething('world');
-  Assert.AreEqual('hello', actual);
+  Assert.AreEqual('hello', actual, False);
 end;
 
 initialization

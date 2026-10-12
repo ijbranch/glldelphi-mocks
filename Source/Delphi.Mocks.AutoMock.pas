@@ -1,4 +1,4 @@
-{***************************************************************************}
+﻿{***************************************************************************}
 {                                                                           }
 {           Delphi Mocks                                                    }
 {                                                                           }
@@ -21,17 +21,28 @@ uses
   Delphi.Mocks.WeakReference;
 
 type
+  /// <summary>The auto mocker behind TAutoMockContainer: it keeps every mock it hands out alive for the container's
+  /// lifetime. The mocks hold it only weakly, so the container and its mocks are all freed together.</summary>
   TAutoMock = class(TWeakReferencedObject, IAutoMock)
   private
+    /// <summary>The mocks the container owns.</summary>
     FMocks : TList<IProxy>;
   public
+    /// <summary>Creates and keeps a mock of an interface.</summary>
+    /// <param name="ATypeInfo">The interface type.</param>
+    /// <returns>The mock's proxy.</returns>
+    /// <exception cref="EMockException">The type is not an interface.</exception>
+    /// <exception cref="EMockNoRTTIException">The interface has no RTTI.</exception>
     function Mock(const ATypeInfo : PTypeInfo) : IProxy;
+    /// <summary>Keeps a mock created elsewhere for the container's lifetime.</summary>
+    /// <param name="ATypeName">The mocked type's name; not used.</param>
+    /// <param name="AMock">The mock's proxy.</param>
     procedure Add(const ATypeName : string; const AMock: IProxy);
+    /// <summary>Creates an empty auto mocker.</summary>
     constructor Create;
+    /// <summary>Releases every mock.</summary>
     destructor Destroy; override;
   end;
-
-//TODO: Add getting out a previously added mock. This would be done in the RecordHit of the method data object.
 
 implementation
 
@@ -70,6 +81,11 @@ var
   proxy: IProxy;
   proxyAsType: IProxy;
 begin
+  //Only interfaces: the type-info proxy has no instance to give a class, so a class got as far
+  //as ProxyFromType and failed there with a misleading "no proxy" error.
+  if ATypeInfo.Kind <> tkInterface then
+    raise EMockException.Create(ATypeInfo.NameStr + ' is not an interface. Auto mocking supports interfaces only');
+
   //Raise exceptions if the mock doesn't meet the requirements.
   TMocksValidation.CheckMockType(ATypeInfo);
 
@@ -79,9 +95,9 @@ begin
 
   FMocks.Add(proxy);
 
-  //Push the proxy into the result we are returning.
+  //Push the proxy into the result we are returning. Every TProxy implements IProxy, so failing
+  //here means an internal error rather than a user mistake.
   if proxyAsType.QueryInterface(GetTypeData(TypeInfo(IProxy)).Guid, result) <> 0 then
-    //TODO: This raise seems superfluous as the only types which are created are controlled by us above. They all implement IProxy<T>
     raise EMockNoProxyException.Create('Error casting to interface ' + ATypeInfo.NameStr + ' , proxy does not appear to implement IProxy');
 end;
 
