@@ -42,16 +42,18 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_AutoIncVersion>true</VerInfo_AutoIncVersion>
+        <VerInfo_MajorVer>0</VerInfo_MajorVer>
+        <VerInfo_MinorVer>3</VerInfo_MinorVer>
+        <VerInfo_Release>2</VerInfo_Release>
+        <VerInfo_Build>0</VerInfo_Build>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+        <VerInfo_Keys>CompanyName=GITLAK Software;FileDescription=Delphi Mocks demonstration;FileVersion=0.3.2.0;InternalName=;LegalCopyright=Apache License 2.0;LegalTrademarks=;OriginalFilename=;ProductName=Delphi Mocks;ProductVersion=0.3.2.0;Comments=</VerInfo_Keys>
         <DCC_UnitSearchPath>..\Source;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <SanitizedProjectName>Sample1</SanitizedProjectName>
         <DCC_DUPLICATE_CTOR_DTOR>false</DCC_DUPLICATE_CTOR_DTOR>
-        <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.2.3.4;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0</VerInfo_Keys>
         <Manifest_File>None</Manifest_File>
-        <VerInfo_Locale>3081</VerInfo_Locale>
-        <VerInfo_MinorVer>2</VerInfo_MinorVer>
-        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_Build>4</VerInfo_Build>
-        <VerInfo_Release>3</VerInfo_Release>
         <DCC_DependencyCheckOutputName>%Platform%\%Config%\Sample1.exe</DCC_DependencyCheckOutputName>
         <DCC_UsePackage>bindcompfmx;dsnap;fmx;rtl;IndySystem;IndyCore;dbrtl;bindcomp;inetdb;fmxase;inet;fmxobj;xmlrtl;inetdbxpress;IndyProtocols;fmxdae;bindengine;soaprtl;$(DCC_UsePackage)</DCC_UsePackage>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
@@ -64,17 +66,9 @@
         <DCC_K>false</DCC_K>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
-        <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
-        <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-        <VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
-        <VerInfo_Build>1</VerInfo_Build>
-        <VerInfo_MinorVer>3</VerInfo_MinorVer>
-        <VerInfo_MajorVer>4</VerInfo_MajorVer>
-        <VerInfo_Keys>CompanyName=VSoft;FileDescription=;FileVersion=4.3.2.1;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0</VerInfo_Keys>
-        <VerInfo_Release>2</VerInfo_Release>
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
         <DCC_Optimize>false</DCC_Optimize>
         <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
@@ -82,8 +76,14 @@
         <DCC_RemoteDebug>true</DCC_RemoteDebug>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_AutoIncVersion>true</VerInfo_AutoIncVersion>
+        <VerInfo_MajorVer>0</VerInfo_MajorVer>
+        <VerInfo_MinorVer>3</VerInfo_MinorVer>
+        <VerInfo_Release>2</VerInfo_Release>
+        <VerInfo_Build>2</VerInfo_Build>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
+        <VerInfo_Keys>CompanyName=GITLAK Software;FileDescription=Delphi Mocks demonstration;FileVersion=0.3.2.2;InternalName=;LegalCopyright=Apache License 2.0;LegalTrademarks=;OriginalFilename=;ProductName=Delphi Mocks;ProductVersion=0.3.2.2;Comments=</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
@@ -92,9 +92,14 @@
         <DCC_DebugInformation>0</DCC_DebugInformation>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_AutoIncVersion>true</VerInfo_AutoIncVersion>
+        <VerInfo_MajorVer>0</VerInfo_MajorVer>
+        <VerInfo_MinorVer>3</VerInfo_MinorVer>
+        <VerInfo_Release>2</VerInfo_Release>
+        <VerInfo_Build>1</VerInfo_Build>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
-        <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=GITLAK Software;FileDescription=Delphi Mocks demonstration;FileVersion=0.3.2.1;InternalName=;LegalCopyright=Apache License 2.0;LegalTrademarks=;OriginalFilename=;ProductName=Delphi Mocks;ProductVersion=0.3.2.1;Comments=</VerInfo_Keys>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
@@ -105,6 +110,8 @@
         <DCCReference Include="Delphi.Mocks.Examples.Factory.pas"/>
         <DCCReference Include="Delphi.Mocks.Examples.Implement.pas"/>
         <DCCReference Include="Delphi.Mocks.Examples.Interfaces.pas"/>
+        <DCCReference Include="Delphi.Mocks.Examples.Matchers.pas"/>
+        <DCCReference Include="Delphi.Mocks.Examples.Objects.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>
@@ -286,9 +293,9 @@
                 <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>
             </Deployment>
             <Platforms>
-        <Platform value="Win32">True</Platform>
-        <Platform value="Win64">True</Platform>
-    </Platforms>
+                <Platform value="Win32">True</Platform>
+                <Platform value="Win64">True</Platform>
+            </Platforms>
             <UnitTesting>
                 <TestProjectName>\\cirrus\c$\Users\vincent.OFFICE\Documents\RAD Studio\Projects\DelphiXE2Mocks\Test\Delphi.Mocks.dproj</TestProjectName>
             </UnitTesting>
