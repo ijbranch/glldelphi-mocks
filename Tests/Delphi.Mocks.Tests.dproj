@@ -100,9 +100,9 @@
         <VerInfo_MajorVer>0</VerInfo_MajorVer>
         <VerInfo_MinorVer>3</VerInfo_MinorVer>
         <VerInfo_Release>2</VerInfo_Release>
-        <VerInfo_Build>1</VerInfo_Build>
+        <VerInfo_Build>2</VerInfo_Build>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=GITLAK Software;FileDescription=Delphi Mocks tests;FileVersion=0.3.2.1;InternalName=;LegalCopyright=Apache License 2.0;LegalTrademarks=;OriginalFilename=;ProductName=Delphi Mocks;ProductVersion=0.3.2.1;Comments=</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=GITLAK Software;FileDescription=Delphi Mocks tests;FileVersion=0.3.2.2;InternalName=;LegalCopyright=Apache License 2.0;LegalTrademarks=;OriginalFilename=;ProductName=Delphi Mocks;ProductVersion=0.3.2.2;Comments=</VerInfo_Keys>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
