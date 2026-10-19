@@ -2,7 +2,9 @@
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [In-Service]
+
+> Changes below are live as soon as the project is Release-built and installed - there is no separate release step, so there is no `[Unreleased]` backlog (Ian, 2026-10-19: "As soon as these are Release built they are Released").
 
 ### Added
 - **Regression suites for every fix, proved red on the old code** (2026-10-13) - `Tests\Delphi.Mocks.Tests.Regression.pas` (34 tests, original API), `Tests\Delphi.Mocks.Tests.RegressionNewApi.pas` (6 tests: call log, `IVerify.ClearExpectations`, `TAutoMockContainer.Mock(PTypeInfo)`, auto mock refusing a class, `TMatcherFactory.ClearMatchers`, `ResetCalls` clearing the call order). Built in a worktree against the previous `Source\`: 32 of the 34 failed or errored there. The one that passed (`Stub_Of_Class_Runs_Overridden_Destructor`) is kept as a guard for a defensive fix; the other was ignored at the time and found a defect in the new comparison (method pointers), fixed before release. Every test unit now has full DocInsight; each `[Test]` says what it proves.
