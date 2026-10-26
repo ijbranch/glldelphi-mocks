@@ -109,7 +109,7 @@ type
 implementation
 
 uses
-  SysUtils,
+  System.SysUtils,
   Delphi.Mocks,
   Delphi.Mocks.Proxy,
   System.Rtti;

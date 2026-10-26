@@ -63,6 +63,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- (2026-10-26) **Unit-scope names in every `uses` clause** — `Tests/Delphi.Mocks.Examples.Matchers.pas`, `Tests/Delphi.Mocks.Tests.AutoMock.pas`, `Tests/Delphi.Mocks.Tests.Base.pas`, `Tests/Delphi.Mocks.Tests.Behavior.pas`, `Tests/Delphi.Mocks.Tests.dpr`, `Tests/Delphi.Mocks.Tests.InterfaceProxy.pas`, `Tests/Delphi.Mocks.Tests.Interfaces.pas`, `Tests/Delphi.Mocks.Tests.MethodData.pas`, `Tests/Delphi.Mocks.Tests.ObjectProxy.pas`, `Tests/Delphi.Mocks.Tests.Objects.pas`, `Tests/Delphi.Mocks.Tests.Proxy.pas`, `Tests/Delphi.Mocks.Tests.ProxyBase.pas`, `Tests/Delphi.Mocks.Tests.Stubs.pas`, `Tests/Delphi.Mocks.Tests.Utils.pas`.  31 bare RTL/VCL unit names in `uses` clauses given their unit-scope names; generated code is byte-identical in every mode built.  **Why:** Ian, 2026-10-26: "all the gll* forks are our own code because they have all been modified to suite our needs/preferences/standards".  Divergence from upstream: a later upstream merge conflicts wherever upstream edits a converted `uses` line; resolve by taking upstream's change and keeping the scoped spelling.
 - (2026-08-24) The test project now resolves DUnitX from a sibling `gllDUnitX` checkout via the `DUNITX` property, with a `CheckDUnitX` target that fails with an actionable message - `Tests/Delphi.Mocks.Tests.dproj`
 - (2026-08-24) Normalised the test sources to CRLF line endings - `Tests/Delphi.Mocks.Tests.Base.pas`,
   `Tests/Delphi.Mocks.Tests.dpr`

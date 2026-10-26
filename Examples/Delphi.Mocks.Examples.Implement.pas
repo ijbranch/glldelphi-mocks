@@ -30,9 +30,9 @@ type
 implementation
 
 uses
-  Rtti,
-  TypInfo,
-  SysUtils,
+  System.Rtti,
+  System.TypInfo,
+  System.SysUtils,
   Delphi.Mocks;
 
 type

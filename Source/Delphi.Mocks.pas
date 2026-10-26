@@ -33,7 +33,7 @@ interface
 uses
   System.TypInfo,
   System.Rtti,
-  System.Sysutils,
+  System.SysUtils,
   System.RegularExpressions,
   System.Generics.Defaults,
   System.Generics.Collections,

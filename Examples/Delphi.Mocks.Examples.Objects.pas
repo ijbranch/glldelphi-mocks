@@ -3,7 +3,7 @@
 interface
 
 uses
-  SysUtils,
+  System.SysUtils,
   Delphi.Mocks;
 
 type

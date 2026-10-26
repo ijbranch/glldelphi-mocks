@@ -59,7 +59,7 @@ type
 implementation
 
 uses
-  Classes,
+  System.Classes,
   Delphi.Mocks;
 { TUtilsTests }
 { TStubTests }

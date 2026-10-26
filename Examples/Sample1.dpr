@@ -5,7 +5,7 @@
 {$R *.res}
 
 uses
-  SysUtils,
+  System.SysUtils,
   Sample1Main in 'Sample1Main.pas',
   Delphi.Mocks.Example.ProjectSaveCheckVisitor in 'Delphi.Mocks.Example.ProjectSaveCheckVisitor.pas',
   Delphi.Mocks.Examples.Factory in 'Delphi.Mocks.Examples.Factory.pas',

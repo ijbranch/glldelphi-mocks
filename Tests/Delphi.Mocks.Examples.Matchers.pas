@@ -159,9 +159,9 @@ type
 implementation
 
 uses
-  Rtti,
-  SysUtils,
-  TypInfo,
+  System.Rtti,
+  System.SysUtils,
+  System.TypInfo,
   Delphi.Mocks,
   System.Hash,
   Delphi.Mocks.ParamMatcher;

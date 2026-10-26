@@ -3,8 +3,8 @@
 interface
 
 uses
-  Rtti,
-  SysUtils,
+  System.Rtti,
+  System.SysUtils,
   DUnitX.TestFramework,
   Delphi.Mocks;
 
@@ -34,7 +34,7 @@ uses
   Delphi.Mocks.Helpers,
   Delphi.Mocks.Interfaces,
   Delphi.Mocks.Proxy,
-  classes;
+  System.Classes;
 
 type
   {$M+}

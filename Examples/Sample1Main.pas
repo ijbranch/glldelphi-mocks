@@ -65,8 +65,8 @@ type
 implementation
 
 uses
-  SysUtils,
-  Rtti;
+  System.SysUtils,
+  System.Rtti;
 
 
 procedure Test;

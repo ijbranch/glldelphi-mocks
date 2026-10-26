@@ -17,7 +17,7 @@ uses
   DUnitX.Loggers.Console,
   DUnitX.Windows.Console,
   DUnitX.Loggers.XML.NUnit,
-  SysUtils,
+  System.SysUtils,
   Delphi.Mocks.Tests.AutoMock in 'Delphi.Mocks.Tests.AutoMock.pas',
   Delphi.Mocks.Tests.Base in 'Delphi.Mocks.Tests.Base.pas',
   Delphi.Mocks.Tests.Behavior in 'Delphi.Mocks.Tests.Behavior.pas',

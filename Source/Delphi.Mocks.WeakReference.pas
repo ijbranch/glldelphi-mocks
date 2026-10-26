@@ -174,7 +174,7 @@ implementation
 uses
   System.TypInfo,
   System.Classes,
-  System.Sysutils,
+  System.SysUtils,
   System.SyncObjs;
 
 //MonitorTryEnter doesn't do a nil check!

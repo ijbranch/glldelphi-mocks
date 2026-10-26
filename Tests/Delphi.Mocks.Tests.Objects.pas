@@ -3,7 +3,7 @@
 interface
 
 uses
-  SysUtils,
+  System.SysUtils,
   DUnitX.TestFramework,
   Delphi.Mocks;
 
@@ -62,7 +62,7 @@ type
 implementation
 
 uses
-  Rtti;
+  System.Rtti;
 
 { TMockObjectTests }
 

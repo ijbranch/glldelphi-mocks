@@ -15,8 +15,8 @@ unit Delphi.Mocks.Tests.ObjectProxy;
 interface
 
 uses
-  Rtti,
-  SysUtils,
+  System.Rtti,
+  System.SysUtils,
   DUnitX.TestFramework,
   Delphi.Mocks;
 

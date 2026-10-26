@@ -3,7 +3,7 @@
 interface
 
 uses
-  SysUtils,
+  System.SysUtils,
   DUnitX.TestFramework,
   Delphi.Mocks;
 

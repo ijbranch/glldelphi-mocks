@@ -3,9 +3,9 @@
 interface
 
 uses
-  SysUtils,
+  System.SysUtils,
   DUnitX.TestFramework,
-  Rtti,
+  System.Rtti,
   Delphi.Mocks,
   Delphi.Mocks.ParamMatcher;
 
@@ -88,7 +88,7 @@ uses
   Delphi.Mocks.Helpers,
   Delphi.Mocks.Interfaces,
   Delphi.Mocks.Behavior,
-  classes;
+  System.Classes;
 
 { TTestBehaviors }
 

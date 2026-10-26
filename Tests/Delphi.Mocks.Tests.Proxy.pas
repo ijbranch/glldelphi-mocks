@@ -3,8 +3,8 @@
 interface
 
 uses
-  Rtti,
-  SysUtils,
+  System.Rtti,
+  System.SysUtils,
   DUnitX.TestFramework,
   Delphi.Mocks;
 
@@ -36,7 +36,7 @@ uses
   Delphi.Mocks.Helpers,
   Delphi.Mocks.Interfaces,
   Delphi.Mocks.MethodData,
-  classes;
+  System.Classes;
 
 type
   /// <summary>A class to mock, with two abstract procedures.</summary>

@@ -67,7 +67,7 @@ type
 implementation
 
 uses
-  SysUtils;
+  System.SysUtils;
 
 { TProjectSaveCheckVisitor }
 

@@ -15,9 +15,9 @@ unit Delphi.Mocks.Tests.MethodData;
 interface
 
 uses
-  SysUtils,
+  System.SysUtils,
   DUnitX.TestFramework,
-  Rtti,
+  System.Rtti,
   Delphi.Mocks,
   Delphi.Mocks.Interfaces;
 
@@ -97,7 +97,7 @@ implementation
 uses
   Delphi.Mocks.Helpers,
   Delphi.Mocks.MethodData,
-  classes, System.TypInfo, StrUtils, Delphi.Mocks.ParamMatcher;
+  System.Classes, System.TypInfo, System.StrUtils, Delphi.Mocks.ParamMatcher;
 
 
 { TTestMethodData }

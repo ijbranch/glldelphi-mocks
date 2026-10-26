@@ -15,8 +15,8 @@ unit Delphi.Mocks.Tests.Base;
 interface
 
 uses
-  Rtti,
-  SysUtils,
+  System.Rtti,
+  System.SysUtils,
   DUnitX.TestFramework,
   Delphi.Mocks;
 
@@ -181,11 +181,11 @@ type
 implementation
 
 uses
-  TypInfo,
+  System.TypInfo,
   Delphi.Mocks.Helpers,
   Delphi.Mocks.Interfaces,
   Delphi.Mocks.Proxy,
-  classes;
+  System.Classes;
 
 { TTestMock }
 

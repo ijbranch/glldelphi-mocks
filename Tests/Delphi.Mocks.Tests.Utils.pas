@@ -15,7 +15,7 @@ unit Delphi.Mocks.Tests.Utils;
 interface
 uses
   DUnitX.TestFramework,
-  Rtti,
+  System.Rtti,
   Delphi.Mocks.Helpers;
 
 type
@@ -75,7 +75,7 @@ type
 implementation
 
 uses
-  SysUtils;
+  System.SysUtils;
 
 type
   /// <summary>A class with a normal, an abstract and a virtual method, compared by its value.</summary>
