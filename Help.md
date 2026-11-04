@@ -383,6 +383,8 @@ three deletions. **There is no condition under which this is reopened.**
 - **`Delphi.Mocks.ObjectProxy.pas` frees the wrapped instance unconditionally**, even when the
   caller supplied it. Changing that is an ownership-contract change, so it is left alone on
   purpose.
+- (2026-10-02) `Delphi.Mocks.ReturnTypePatch.pas` shadow-declares private `System.Rtti` fields to patch RTTI. The layout still matches RAD Studio 37.0. Since 2026-10-02 a reorder no longer breaks silently: `Tests\Delphi.Mocks.Tests.ReturnTypePatch.pas` goes red (mutation-proved).
+- (2026-08-24) `Delphi.Mocks.ObjectProxy.pas` frees the wrapped instance unconditionally, even when the caller supplied it. Changing that is an ownership contract change, so it is left alone deliberately.
 
 ---
 

@@ -24,12 +24,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- (2026-11-04) **Known issues moved to `Help.md`** — `CHANGELOG.md`, `Help.md`.  The changelog records changes; the open known issues (2) now live in `Help.md` § Known issues, deliberately left, text unchanged.
 - (2026-10-26) **Unit-scope names in every `uses` clause** — `Examples/Delphi.Mocks.Example.ProjectSaveCheckVisitor.pas`, `Examples/Delphi.Mocks.Examples.Factory.pas`, `Examples/Delphi.Mocks.Examples.Implement.pas`, `Examples/Delphi.Mocks.Examples.Interfaces.pas`, `Examples/Delphi.Mocks.Examples.Matchers.pas`, `Examples/Delphi.Mocks.Examples.Objects.pas`, `Examples/Sample1.dpr`, `Examples/Sample1Main.pas`, `Source/Delphi.Mocks.pas`, `Source/Delphi.Mocks.WeakReference.pas`.  13 bare RTL/VCL unit names in `uses` clauses given their unit-scope names, 2 scoped names respelt as the unit declares itself; generated code is byte-identical in every mode built.  **Why:** Ian, 2026-10-26: "all the gll* forks are our own code because they have all been modified to suite our needs/preferences/standards".  Divergence from upstream: a later upstream merge conflicts wherever upstream edits a converted `uses` line; resolve by taking upstream's change and keeping the scoped spelling.
 - (2026-10-13) **Within a behaviour type, the most recently defined matching behaviour wins** - `Source\Delphi.Mocks.MethodData.pas`. Overlapping definitions could only coexist once setup stopped comparing calls (see Fixed), and a general rule followed by a specific one is the common case, so the later definition is now found first. The precedence between types is unchanged.
 - (2026-10-13) **Messages made accurate** - `Source\Delphi.Mocks.Validation.pas`, `Source\Delphi.Mocks.pas`, `Source\Delphi.Mocks.Utils.pas`. A class with no virtual method of its own is reported as having nothing to intercept (it said to add `{$M+}`, which was never what the check measured); `CheckClassHasRTTI` now measures against an empty class rather than a hard-coded 12. `Implement<I>` on a class mock names both types; `Verify<I>` for an unimplemented `I` raises `EMockNoProxyException`.
 - (2026-10-13) **Dead code removed** - `Source\Delphi.Mocks.Utils.pas` (`GetDefaultValue`, never called and wrong for sets), `Source\Delphi.Mocks.Proxy.pas` and `Proxy.TypeInfo.pas` (`QueryProxy`, inverted and never called; the type-info proxy's setup branches, which nothing could reach, and its commented-out copies), `Source\Delphi.Mocks.Behavior.pas` (a hit count nothing read).
 - (2026-10-13) **Compiler floor raised to Delphi 13** - `Source\Delphi.Mocks.inc`. The guard said XE2 (`CompilerVersion < 23`); the fork has had no pre-D13 code since 2026-10-02.
 - (2026-10-08) **D13 language features adopted** - `Source/Delphi.Mocks.Validation.pas`, `Source/Delphi.Mocks.pas`. 2 `not ( X in S )` / `not ( X is T )` rewritten as `X not in S` / `X is not T` (generated code byte-identical: every project that built before was rebuilt and compared). **Divergence accepted:** upstream was reviewed first (nothing pending was lost), and Ian's ruling for the gll* forks is that they "are our forks now", to be made "as correct as possible/practical"; these lines will need re-applying or resolving in any later upstream port.
+- (2026-10-02) **Upstream swept 2026-10-02: watermark `53cd36b` (2026-10-01, `upstream/master`).** The one new
+  commit, `53cd36b`, was TAKEN (see `### Fixed`); real shared history exists, so it went in by
+  cherry-pick. This fork is again 0 commits behind `upstream/master`.
+- (2026-09-18) **Upstream swept 2026-09-18: `AutoMockV2` reviewed, nothing taken.** This fork is **0 commits
+  behind both `upstream/master` and `upstream/Development`**; `AutoMockV2` is an abandoned **2015**
+  feature branch, eleven years behind upstream's own tip.
+  - `928ca09` "removed param matchers which was copied by accident" - **REFUSED, and it would
+    break the build.** Its only source content removes `Delphi.Mocks.ParamMatcher` from four
+    `uses` clauses, but that unit is LIVE here and referenced by eight units
+    (`Delphi.Mocks.pas`, `.Behavior`, `.Expectation`, `.Interfaces`, `.MethodData`, `.Proxy`,
+    `.Proxy.TypeInfo`). We have also fixed a real defect inside it - `TMatcherFactory` freeing
+    matcher lists the dictionary already owns (`doOwnsValues`), a double free on any aborted
+    `Setup`. Upstream itself reversed the "copied by accident" judgement when Development was
+    merged back. The remainder is XE8-era `.dproj` churn, pre-D13.
+  - `2cbaae6` - a merge whose unique content is exactly `928ca09`'s three deletions. REFUSED.
+  **Condition to reopen:** none. The branch is abandoned and its one idea was reversed upstream.
 - (2026-09-10) Project platforms normalised to Win32 + Win64 only in 3 `.dproj` files
   Non-Windows targets (`Android`, `Android64`, `iOS*`, `OSX*`, `Linux64`) and the
   `Win64x` / `WinARM64EC` variants were removed together with their `Base_<Plat>` and
@@ -164,27 +181,3 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (2026-08-24) The entire object-proxy feature crashed on Win64, taking out 24 of 166 tests with access violations reading a sign-extended address - `Source/Delphi.Mocks.Utils.pas`
   **Why:** `GetVirtualMethodCount` cast a class reference with `Integer(AClass)`, truncating a 64 bit pointer to 32 bits so it was sign extended back into unmapped memory, and read the pointer-sized VMT slot through a `PInteger`, getting half of it. Both are now `NativeInt`. The suite went from 132 passed / 1 failed / 23 errored to 156 passed / 0 failed / 0 errored.
 - (2026-08-24) `.res` and `.rc` are no longer ignored; three `.dpk`/`.dpr` files pull them in with `{$R *.res}` - `.gitignore`, `packages/RAD Studio 13.0/VSoft.DelphiMocksR.res`
-
-### Reviewed and deliberately NOT taken from upstream, so they are not re-derived later
-
-- (2026-10-02) **Upstream swept 2026-10-02: watermark `53cd36b` (2026-10-01, `upstream/master`).** The one new
-  commit, `53cd36b`, was TAKEN (see `### Fixed`); real shared history exists, so it went in by
-  cherry-pick. This fork is again 0 commits behind `upstream/master`.
-- (2026-09-18) **Upstream swept 2026-09-18: `AutoMockV2` reviewed, nothing taken.** This fork is **0 commits
-  behind both `upstream/master` and `upstream/Development`**; `AutoMockV2` is an abandoned **2015**
-  feature branch, eleven years behind upstream's own tip.
-  - `928ca09` "removed param matchers which was copied by accident" - **REFUSED, and it would
-    break the build.** Its only source content removes `Delphi.Mocks.ParamMatcher` from four
-    `uses` clauses, but that unit is LIVE here and referenced by eight units
-    (`Delphi.Mocks.pas`, `.Behavior`, `.Expectation`, `.Interfaces`, `.MethodData`, `.Proxy`,
-    `.Proxy.TypeInfo`). We have also fixed a real defect inside it - `TMatcherFactory` freeing
-    matcher lists the dictionary already owns (`doOwnsValues`), a double free on any aborted
-    `Setup`. Upstream itself reversed the "copied by accident" judgement when Development was
-    merged back. The remainder is XE8-era `.dproj` churn, pre-D13.
-  - `2cbaae6` - a merge whose unique content is exactly `928ca09`'s three deletions. REFUSED.
-  **Condition to reopen:** none. The branch is abandoned and its one idea was reversed upstream.
-
-### Known Issues
-
-- (2026-10-02) `Delphi.Mocks.ReturnTypePatch.pas` shadow-declares private `System.Rtti` fields to patch RTTI. The layout still matches RAD Studio 37.0. Since 2026-10-02 a reorder no longer breaks silently: `Tests\Delphi.Mocks.Tests.ReturnTypePatch.pas` goes red (mutation-proved).
-- (2026-08-24) `Delphi.Mocks.ObjectProxy.pas` frees the wrapped instance unconditionally, even when the caller supplied it. Changing that is an ownership contract change, so it is left alone deliberately.
