@@ -69,12 +69,20 @@ type
     procedure Test_CompareValue_ObjectEquals;
     /// <summary>Proves objects whose Equals says they differ compare unequal.</summary>
     procedure Test_CompareValue_ObjectNotEquals;
+
+    /// <summary>Proves two interface references exactly 4 GB apart compare unequal, with the right sign, on Win64.
+    /// Their address difference truncated to 32 bits is 0, so a raw subtraction into an Integer either raised
+    /// ERangeError or called them equal (upstream #157, `abf2c65`; this fork's own fix compares by sign).</summary>
+    procedure Test_CompareValue_InterfaceNotEquals_AddressesFarApart;
   end;
   {$M-}
 
 implementation
 
 uses
+  {$IFDEF CPU64BITS}
+  Winapi.Windows,
+  {$ENDIF}
   System.SysUtils;
 
 type
@@ -232,6 +240,91 @@ begin
     o2.Free;
   end;
 end;
+
+{$IFDEF CPU64BITS}
+/// <summary>The fake interface's QueryInterface: supports nothing, so CompareValue falls back to the raw reference.
+/// </summary>
+/// <param name="Self">The fake interface's address.</param>
+/// <param name="IID">The interface asked for.</param>
+/// <param name="Obj">Set to nil.</param>
+/// <returns>E_NOINTERFACE.</returns>
+function FakeQueryInterface(Self: Pointer; const IID: TGUID; out Obj): HResult; stdcall;
+begin
+  Pointer(Obj) := nil;
+  Result := E_NOINTERFACE;
+end;
+
+/// <summary>The fake interface's _AddRef: counts nothing, as the fake has no object behind it.</summary>
+/// <param name="Self">The fake interface's address.</param>
+/// <returns>1.</returns>
+function FakeAddRef(Self: Pointer): Integer; stdcall;
+begin
+  Result := 1;
+end;
+
+/// <summary>The fake interface's _Release: frees nothing; the test releases the memory itself.</summary>
+/// <param name="Self">The fake interface's address.</param>
+/// <returns>1.</returns>
+function FakeRelease(Self: Pointer): Integer; stdcall;
+begin
+  Result := 1;
+end;
+
+const
+  /// <summary>An IInterface method table whose methods do nothing, so an interface reference can be made at any
+  /// chosen address without an object behind it.</summary>
+  FakeVTable: array[0..2] of Pointer = (@FakeQueryInterface, @FakeAddRef, @FakeRelease);
+
+/// <summary>Compares two interfaces in a routine of its own, so the temporary TValues and their references are gone
+/// before the test frees the fakes' memory.</summary>
+/// <param name="AInterface1">The left interface.</param>
+/// <param name="AInterface2">The right interface.</param>
+/// <returns>CompareValue's result.</returns>
+function CompareFakeInterfaces(const AInterface1, AInterface2: IInterface): Integer;
+begin
+  Result := CompareValue(TValue.From<IInterface>(AInterface1), TValue.From<IInterface>(AInterface2));
+end;
+{$ENDIF}
+
+procedure TTestTValue.Test_CompareValue_InterfaceNotEquals_AddressesFarApart;
+{$IFDEF CPU64BITS}
+const
+  cBaseAddress = UInt64($20000000);
+  cFarAddress = UInt64($120000000); // exactly 4 GB further: the address difference truncated to 32 bits is 0
+var
+  lFake1, lFake2: PPointer;
+  lIntf1, lIntf2: IInterface;
+begin
+  lFake1 := VirtualAlloc(Pointer(NativeUInt(cBaseAddress)), 4096, MEM_RESERVE or MEM_COMMIT, PAGE_READWRITE);
+  lFake2 := VirtualAlloc(Pointer(NativeUInt(cFarAddress)), 4096, MEM_RESERVE or MEM_COMMIT, PAGE_READWRITE);
+  try
+    if (lFake1 = nil) or (lFake2 = nil) then
+      Assert.Ignore('Could not reserve memory at the required addresses, so nothing was compared');
+    lFake1^ := @FakeVTable;
+    lFake2^ := @FakeVTable;
+    Pointer(lIntf1) := lFake1;
+    Pointer(lIntf2) := lFake2;
+    try
+      Assert.AreNotEqual(0, CompareFakeInterfaces(lIntf1, lIntf2));
+      Assert.IsTrue(CompareFakeInterfaces(lIntf1, lIntf2) < 0);
+      Assert.IsTrue(CompareFakeInterfaces(lIntf2, lIntf1) > 0);
+      Assert.AreEqual(0, CompareFakeInterfaces(lIntf1, lIntf1));
+    finally
+      Pointer(lIntf1) := nil;
+      Pointer(lIntf2) := nil;
+    end;
+  finally
+    if lFake1 <> nil then
+      VirtualFree(lFake1, 0, MEM_RELEASE);
+    if lFake2 <> nil then
+      VirtualFree(lFake2, 0, MEM_RELEASE);
+  end;
+end;
+{$ELSE}
+begin
+  Assert.Pass('This test applies to Win64 only');
+end;
+{$ENDIF}
 
 procedure TTestTValue.Test_CompareValue_RecordEquals;
 var
