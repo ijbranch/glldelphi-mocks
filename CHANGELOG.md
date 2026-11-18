@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- (2026-11-19) **Upstream swept 2026-11-19: watermark `3b2236f` (2026-11-17, `upstream/master`).  Nothing taken.**  `1291564` (#158, `GetVirtualMethodCount` pointer truncation on Win64) is the same `NativeInt` / `PNativeInt` fix this fork already carries in `Source/Delphi.Mocks.Utils.pas`; only the comment differs.  `3b2236f` (#155) adds `boss.json` for the Boss package manager and drops `.gitmodules`: we do not use Boss.
 - (2026-11-13) **Upstream swept 2026-11-13: watermark `abf2c65` (2026-11-11, `upstream/master`).**  The one new commit, `abf2c65` (#157, "Range check error in CompareValue for object/interface arguments on Win64"), fixes what this fork had already fixed in `Source/Delphi.Mocks.Helpers.pas` (compare by sign; interfaces by identity), so its source hunk is not taken; its test is (see `Tests/CHANGELOG.md`) — `CHANGELOG.md`.
 - (2026-11-04) **Help.md known issues reconciled** — `Help.md`.  The two entries moved from the changelog duplicated the existing bullets; each issue is now one bullet.  The ReturnTypePatch bullet said a `System.Rtti` reorder "breaks silently", contradicting the moved entry: since 2026-10-02 `Tests\Delphi.Mocks.Tests.ReturnTypePatch.pas` goes red (mutation-proved), and the bullet now says so.
 - (2026-11-04) **Known issues moved to `Help.md`** — `CHANGELOG.md`, `Help.md`.  The changelog records changes; the open known issues (2) now live in `Help.md` § Known issues, deliberately left, text unchanged.
