@@ -134,6 +134,8 @@ begin
       end)]);
     end);
   finally
+    //methodData keeps the matcher closures, which share this frame and so hold methodData: a cycle, broken here
+    methodData := nil;
     LObjectToTest.Free;
     LAnotherObject.Free;
     LAndAnotherObject.Free;
@@ -266,6 +268,8 @@ begin
       end)]);
     end);
   finally
+    //methodData keeps the matcher closures, which share this frame and so hold methodData: a cycle, broken here
+    methodData := nil;
     LObjectToTest.Free;
     LAnotherObject.Free;
     LAndAnotherObject.Free;

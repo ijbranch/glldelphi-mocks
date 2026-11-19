@@ -13,10 +13,11 @@
 program Delphi.Mocks.Tests;
 
 uses
+  // FastMM5 FIRST, as the memory manager the per-test leak check measures ( GllDUnitX.SuiteRunner )
+  FastMM5,
   DUnitX.TestFramework,
-  DUnitX.Loggers.Console,
   DUnitX.Windows.Console,
-  DUnitX.Loggers.XML.NUnit,
+  GllDUnitX.SuiteRunner,
   System.SysUtils,
   Delphi.Mocks.Tests.AutoMock in 'Delphi.Mocks.Tests.AutoMock.pas',
   Delphi.Mocks.Tests.Base in 'Delphi.Mocks.Tests.Base.pas',
@@ -42,37 +43,20 @@ uses
 {$R *.RES}
 
 
-var
-  runner : ITestRunner;
-  results : IRunResults;
-  logger : ITestLogger;
-  nunitLogger : ITestLogger;
 begin
+  // Every test is checked for memory leaks by GllDUnitX.SuiteRunner ( 2026-11-19 ): a warm-up pass, the measured
+  // pass under FastMM5, then a re-run of each flagged test; only a leak that repeats counts.
   try
-    //Check command line options, will exit if invalid
-    TDUnitX.CheckCommandLine;
     //Two-argument string assertions compare case-sensitively; a test that does not care passes True
     Assert.IgnoreCaseDefault := False;
-    //Create the test runner
-    runner := TDUnitX.CreateRunner;
-    //Tell the runner to use RTTI to find Fixtures
-    runner.UseRTTI := True;
-    //tell the runner how we will log things
-    //Log to the console window
-    logger := TDUnitXConsoleLogger.Create(true);
-    runner.AddLogger(logger);
-    //Generate an NUnit compatible XML File
-    if (TDUnitX.Options.XMLOutputFile <> '') then
-    begin
-      nunitLogger := TDUnitXXMLNUnitFileLogger.Create(TDUnitX.Options.XMLOutputFile);
-      runner.AddLogger(nunitLogger);
-    end;
-    runner.FailsOnNoAsserts := False; //When true, Assertions must be made during tests;
 
-    //Run tests
-    results := runner.Execute;
-    if not results.AllPassed then
-      System.ExitCode := EXIT_ERRORS;
+    var lOptions := TGllSuiteOptions.Defaults;
+    lOptions.FailsOnNoAsserts := False; //When true, Assertions must be made during tests;
+
+    // The command line ( an unknown option exits 251 ), the console and NUnit XML loggers ( the XML beside the exe
+    // unless --xml includes a folder ), and the GITLAK canonical exit code: 0 all passed; n = failures + errors
+    // ( warm-up failures and confirmed leaks included ), clamped to 249; 250 no tests found; 251 the runner raised.
+    RunGllSuite( lOptions );
 
     {$IFNDEF CI}
     //We don't want this happening when running under CI.
@@ -85,13 +69,9 @@ begin
   except
     on E: Exception do
     begin
-      System.Writeln(E.ClassName, ': ', E.Message);
+      System.Writeln( 'Runner error  : ', E.ClassName, ': ', E.Message );
       //A run that dies before reporting must not exit 0 and read as a pass
-      System.ExitCode := EXIT_ERRORS;
+      System.ExitCode := 251;
     end;
   end;
-
-
-
 end.
-

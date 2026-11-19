@@ -134,7 +134,9 @@ begin
   if l > 0  then
   begin
     SetLength(FArgs,l);
-    CopyArray(@FArgs[0],@args[1],TypeInfo(TValue),l);
+    //Detached: an open array argument's type information is freed when the call returns
+    for var i := 0 to l - 1 do
+      FArgs[i] := DetachedArgValue(Args[i + 1]);
   end;
 end;
 

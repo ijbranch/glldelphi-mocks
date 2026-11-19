@@ -54,7 +54,7 @@
         <SanitizedProjectName>Delphi_Mocks_Tests</SanitizedProjectName>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
         <BRCC_Defines>_ISCONSOLE;_XMLOUTPUT;$(BRCC_Defines)</BRCC_Defines>
-        <DCC_UnitSearchPath>..\Source;$(DUNITX);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>D:\gllDUnitX\Source\Gll;..\Source;$(DUNITX);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_UsePackage>bindcompfmx;dsnap;fmx;rtl;IndySystem;IndyCore;dbrtl;bindcomp;inetdb;fmxase;inet;fmxobj;xmlrtl;inetdbxpress;IndyProtocols;fmxdae;bindengine;soaprtl;$(DCC_UsePackage)</DCC_UsePackage>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;$(DCC_Namespace)</DCC_Namespace>
         <DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
@@ -100,9 +100,9 @@
         <VerInfo_MajorVer>0</VerInfo_MajorVer>
         <VerInfo_MinorVer>3</VerInfo_MinorVer>
         <VerInfo_Release>2</VerInfo_Release>
-        <VerInfo_Build>15</VerInfo_Build>
+        <VerInfo_Build>37</VerInfo_Build>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=GITLAK Software;FileDescription=Delphi Mocks tests;FileVersion=0.3.2.15;InternalName=;LegalCopyright=Apache License 2.0;LegalTrademarks=;OriginalFilename=;ProductName=Delphi Mocks;ProductVersion=0.3.2.15;Comments=</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=GITLAK Software;FileDescription=Delphi Mocks tests;FileVersion=0.3.2.37;InternalName=;LegalCopyright=Apache License 2.0;LegalTrademarks=;OriginalFilename=;ProductName=Delphi Mocks;ProductVersion=0.3.2.37;Comments=</VerInfo_Keys>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">

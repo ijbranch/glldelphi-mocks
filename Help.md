@@ -381,6 +381,14 @@ three deletions. **There is no condition under which this is reopened.**
   patch <M>: System.Rtti's layout has changed`) when the write fails or does not take, and
   `EArgumentException` for a type or method that is not an interface's; method names match
   case-insensitively.
+- **Open array arguments match by length only, from the second call of a method on (a `System.Rtti` defect,
+  RAD Studio 37.0).**  `TMethodImplementation.TInvokeInfo.LoadArguments` writes each call's open array type
+  information into the method's shared, cached `FParams` (`GetOpenArrayArg` assigns `FTypeInfo`), and `Intercept`
+  frees it when the call returns.  The next call of that method, on any mock in the process, reads the element
+  type from the freed block: the argument then arrives with its length but no elements, so `[1, 3]` matches a
+  setup for `[1, 2]`.  The old memory manager left the freed block intact, which hid it; FastMM5 does not.
+  `TestOpenArraySetupsMatchByContents` and `TestOpenArrayExpectationMatchesByContents` are ignored as BUG tests
+  until a GITLAKRTL `System.Rtti` patch, which Ian decides on ( `Tests\README.md` ).
 - **`Delphi.Mocks.ObjectProxy.pas` frees the wrapped instance unconditionally**, even when the
   caller supplied it. Changing that is an ownership-contract change, so it is left alone on
   purpose.

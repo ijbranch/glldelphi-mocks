@@ -184,6 +184,16 @@ function CompareValue(const Left, Right: TValue): Integer;
 /// <param name="Right">The second value.</param>
 /// <returns>True when equal.</returns>
 function SameValue(const Left, Right: TValue): Boolean;
+/// <summary>Returns a copy of a mocked-call argument that stays valid after the call returns, for a setup or
+/// expectation to keep.</summary>
+/// <remarks>The RTL builds the type information of an open array argument for that one call and frees it when the
+/// call returns ( TMethodImplementation.Intercept ), so a kept copy of the argument read freed memory: the setup
+/// matched only while the freed block still held its old bytes.  A static array ( an open array included ) is
+/// copied into a TArray&lt;TValue&gt; of its elements, whose types are permanent; CompareValue_Array compares that
+/// with a later call's array element by element.</remarks>
+/// <param name="Value">The argument as the proxy received it.</param>
+/// <returns>Value itself, or for a static array a TArray&lt;TValue&gt; holding copies of its elements.</returns>
+function DetachedArgValue(const Value: TValue): TValue;
 
 
 implementation
@@ -313,6 +323,14 @@ begin
     Result := CompareRaw(left, right);
 end;
 
+//An element of an array, unwrapped when the array is the TArray<TValue> DetachedArgValue made of an open array
+function ArrayElement(const AArray: TValue; AIndex: Integer): TValue;
+begin
+  Result := AArray.GetArrayElement(AIndex);
+  if Result.TypeInfo = System.TypeInfo(TValue) then
+    Result := Result.AsType<TValue>;
+end;
+
 function CompareValue_Array(const Left, Right: TValue): Integer;
 var
   i: Integer;
@@ -321,7 +339,7 @@ begin
 
   if Result = 0 then begin
     for i := 0 to Left.GetArrayLength - 1 do begin
-      Result := CompareValue(Left.GetArrayElement(i), Right.GetArrayElement(i));
+      Result := CompareValue(ArrayElement(Left, i), ArrayElement(Right, i));
       if Result <> 0 then
         Exit;
     end;
@@ -374,6 +392,18 @@ begin
     Result := IsEqualGuid( Left.AsType<TGUID>, Right.AsType<TGUID> )
   else
     result := CompareValue(left, right) = 0;
+end;
+
+function DetachedArgValue(const Value: TValue): TValue;
+var
+  lElements: TArray<TValue>;
+begin
+  if Value.Kind <> tkArray then
+    Exit(Value);
+  SetLength(lElements, Value.GetArrayLength);
+  for var i := 0 to High(lElements) do
+    lElements[i] := Value.GetArrayElement(i);
+  Result := TValue.From<TArray<TValue>>(lElements);
 end;
 
 { TValueHelper }

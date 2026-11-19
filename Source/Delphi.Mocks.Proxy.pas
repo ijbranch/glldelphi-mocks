@@ -88,6 +88,10 @@ type
   /// TObjectProxy&lt;T&gt; extends it for classes.</summary>
   TProxy<T> = class(TWeakReferencedObject, IWeakReferenceableObject, IInterface, IProxy, IProxy<T>, IStubProxy<T>, IMockSetup<T>,
     IStubSetup<T>, IExpect<T>, IVerify)
+  private const
+    /// <summary>The message raised when a setup's When call never reached the proxy.</summary>
+    SETUP_ABANDONED_MESSAGE = 'Setup called on non-virtual method: the method named after When never reached the '
+      + 'mock, because it is not virtual or the mock answers it itself (QueryInterface, _AddRef, _Release)';
   private
     //Implements members.
     //Can't define TProxy<T> or any other generic type as that type will be defined at runtime.
@@ -131,10 +135,18 @@ type
     FBetween                : array[0..1] of Cardinal;
     /// <summary>The other method of the pending Before / After setup.</summary>
     FBeforeAfterMethodName  : string;
-    /// <summary>The reference count when the pending setup began. The setup is abandoned - its When call never
-    /// reached the proxy, because the method is not virtual - once the count falls below this, which only happens
-    /// when the statement's temporary references are released.</summary>
+    /// <summary>The reference count the pending setup returns to once its statement's temporary references are
+    /// all released.  The setup is abandoned - its When call never reached the proxy, because the method is not
+    /// virtual - when a release takes the count down to this.</summary>
     FSetupRefCount          : Integer;
+    /// <summary>The reference count when Setup was last asked for outside a setup, before the reference it
+    /// returned; -1 once a setup has used it.  It lets the abandonment be reported on the LAST of the statement's
+    /// temporary references: raised on an earlier one, the exception skipped the caller's release of the rest, so
+    /// the proxy and everything it owned leaked.</summary>
+    FSetupEntryRefCount     : Integer;
+    /// <summary>The exception being handled when the pending setup began ( nil outside a handler ).  An abandoned
+    /// setup is not reported while a DIFFERENT exception propagates, which already reports the failed setup.</summary>
+    FSetupExceptObject      : TObject;
 
     /// <summary>Guards QueryInterface against re-entry.</summary>
     FQueryingInterface      : boolean;
@@ -620,8 +632,23 @@ end;
 
 procedure TProxy<T>.BeginSetup(const AMode: TSetupMode);
 begin
+  //A setup still pending was abandoned and not yet reported: its Setup reference is held in a variable, so the
+  //release that reports it has not come.  Reported here rather than silently replaced.
+  if FSetupMode <> TSetupMode.None then
+  begin
+    ClearSetupState;
+    FSetupEntryRefCount := -1;
+    raise EMockSetupException.Create(SETUP_ABANDONED_MESSAGE);
+  end;
+
   FSetupMode := AMode;
-  FSetupRefCount := RefCount;
+  FSetupExceptObject := System.ExceptObject;
+  //The count before Setup's own reference when the statement began with Setup, else ( Setup<I> reaches the proxy
+  //by QueryInterface ) the count now, the old rule, which still reports the abandonment but on an earlier release.
+  FSetupRefCount := RefCount - 1;
+  if (FSetupEntryRefCount >= 0) and (FSetupEntryRefCount < FSetupRefCount) then
+    FSetupRefCount := FSetupEntryRefCount;
+  FSetupEntryRefCount := -1;
 end;
 
 procedure TProxy<T>.CheckMatchers(const matchers: TArray<IMatcher>; const Args: TArray<TValue>; const Method: TRttiMethod);
@@ -735,6 +762,7 @@ begin
     FAutoMocker := nil;
   FParentProxy := nil;
   FVirtualInterface := nil;
+  FSetupEntryRefCount := -1;
 
   FSetupMode := TSetupMode.None;
   FBehaviorMustBeDefined := False;
@@ -1112,6 +1140,9 @@ end;
 
 function TProxy<T>.StubSetup: IStubSetup<T>;
 begin
+  //Before the reference the result adds, see FSetupEntryRefCount
+  if FSetupMode = TSetupMode.None then
+    FSetupEntryRefCount := RefCount;
   result := Self;
 end;
 
@@ -1122,6 +1153,9 @@ end;
 
 function TProxy<T>.MockSetup: IMockSetup<T>;
 begin
+  //Before the reference the result adds, see FSetupEntryRefCount
+  if FSetupMode = TSetupMode.None then
+    FSetupEntryRefCount := RefCount;
   result := Self;
 end;
 
@@ -1244,7 +1278,9 @@ begin
   //statement's temporary references are then released, taking the count below where it stood
   //when the setup began. Any release used to count, so a transient AddRef/Release pair made
   //while the When arguments were evaluated was reported as a non-virtual method.
-  setupAbandoned := (FSetupMode <> TSetupMode.None) and (RefCount <= FSetupRefCount);
+  //It is judged on the count this release leaves: the abandonment is reported on the release that brings the
+  //count back to where it stood before the statement's first temporary reference ( FSetupEntryRefCount ).
+  setupAbandoned := (FSetupMode <> TSetupMode.None) and (RefCount - 1 <= FSetupRefCount);
   if setupAbandoned then
     ClearSetupState;
 
@@ -1252,9 +1288,11 @@ begin
   // count permanently high, so the proxy and everything it owns leaked.
   result := inherited;
 
-  if setupAbandoned then
-    raise EMockSetupException.Create('Setup called on non-virtual method: the method named after When never reached '
-      + 'the mock, because it is not virtual or the mock answers it itself (QueryInterface, _AddRef, _Release)');
+  //Not while another exception propagates ( the When arguments raised, so the method was never called ): that one
+  //already reports the failed setup, and raising over it lost it and leaked it.  A setup made inside an except
+  //handler still reports: the exception it began under is not a new one.
+  if setupAbandoned and (System.ExceptObject = FSetupExceptObject) then
+    raise EMockSetupException.Create(SETUP_ABANDONED_MESSAGE);
 end;
 
 { TProxy<T>.TProxyVirtualInterface }

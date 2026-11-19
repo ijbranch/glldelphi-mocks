@@ -138,6 +138,11 @@ type
     /// intercepted.</summary>
     [Test]
     procedure WillRaiseMockNonVirtualMethod;
+    /// <summary>Proves a non-virtual setup made through a Setup held in a variable is reported by the next setup
+    /// at the latest, not silently replaced by it, and that the mock still sets up and verifies afterwards.  The
+    /// held reference keeps the count up, so the release that reports the chained form never comes.</summary>
+    [Test]
+    procedure StoredSetupReportsNonVirtualMethodAtNextSetup;
     /// <summary>Proves setup calls do not run the real virtual method.</summary>
     [Test]
     procedure VirtualMethodNotCalledDuringMockSetup;
@@ -389,6 +394,29 @@ begin
   mock := TMock<TCommand>.Create;
   Assert.WillRaise(procedure begin mock.Setup.Expect.Once.When.NonVirtualMethod; end, EMockSetupException);
   Assert.WillRaise(procedure begin mock.Setup.WillReturn(2).When.NonVirtualMethod; end, EMockSetupException);
+end;
+
+procedure TTestObjectProxy.StoredSetupReportsNonVirtualMethodAtNextSetup;
+var
+  mock : TMock<TCommand>;
+  lSetup : IMockSetup<TCommand>;
+  lReachedNextSetup : Boolean;
+begin
+  mock := TMock<TCommand>.Create;
+  lSetup := mock.Setup;
+  lReachedNextSetup := False;
+  Assert.WillRaise(
+    procedure
+    begin
+      lSetup.WillReturn(2).When.NonVirtualMethod;
+      lReachedNextSetup := True;
+      lSetup.WillReturn(3).When.VirtualMethod;
+    end, EMockSetupException);
+  Assert.IsTrue(lReachedNextSetup, 'reported by the non-virtual statement itself, not by the next setup');
+  lSetup := nil;
+
+  mock.Setup.WillReturn(4).When.VirtualMethod;
+  Assert.AreEqual(4, mock.Instance.VirtualMethod);
 end;
 
 procedure TTestObjectProxy.MockWithArgProcedureUsingOnce;

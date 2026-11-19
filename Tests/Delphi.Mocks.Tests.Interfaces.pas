@@ -201,10 +201,15 @@ begin
       received := args[1].AsString;
     end);
 
-  mock.Instance.SimpleProcedure('hello');
+  try
+    mock.Instance.SimpleProcedure('hello');
 
-  Assert.AreEqual('hello', received, False);
-  Assert.WillNotRaiseAny(procedure begin mock.Verify end);
+    Assert.AreEqual('hello', received, False);
+    Assert.WillNotRaiseAny(procedure begin mock.Verify end);
+  finally
+    //The mock keeps the WillExecute closure, which shares this frame and so holds the mock: a cycle, broken here
+    mock.Free;
+  end;
 end;
 
 procedure TInterfaceTests.Cast_Mock_As_Interfaces_It_Implements;
