@@ -188,16 +188,20 @@ last the `WillReturnDefault` value.
 ## 6. Make the mock raise
 
 ```pascal
-mock.Setup.WillRaise( ESimpleException, 'boom' ).When.DoSomething( 'x' );
-mock.Setup.WillRaise( 'SimpleMethod', ESimpleException );   // always, any arguments
+mock.Setup.WillRaiseWhen( ESimpleException, 'boom' ).When.DoSomething( 'x' );   // only for 'x'
+mock.Setup.WillRaise( ESimpleException, 'boom' ).When.DoSomething( 'x' );       // any arguments
+mock.Setup.WillRaise( 'SimpleMethod', ESimpleException );                       // any arguments
 ```
 
 The method-name form **trumps every other behaviour defined for that method** — that is stated in
 the source and is the intended semantic, not a quirk. It is how you test the failure path of a
 dependency without being able to make the real thing fail.
 
-The `When` form (and `WillRaiseWhen`) raises only for a call whose arguments match, and raises with
-the message you gave it; any other call falls through to the next behaviour.
+**Only `WillRaiseWhen` looks at the arguments.** It raises for a call whose arguments match, and any
+other call falls through to the next behaviour. `WillRaise( … ).When.DoSomething( 'x' )` raises for
+**every** call of `DoSomething`: there the `When` call only names the method. All of them raise with
+the message you gave, and if your exception class has its own `Create( const Msg: string )`, that is
+the constructor that runs. Passing `nil` as the class is refused when you set it up.
 
 ---
 
@@ -230,6 +234,10 @@ came before `Commit`'s first call; `After` is the mirror image. The method-name 
 is tracked per proxy, so it does not compare calls made on an interface added with
 `Implement<I>` against calls on the main one.
 
+A method name you type is checked against the mocked type: a misspelt or renamed method raises
+`EMockSetupException` at once, instead of giving an expectation that can never fail. A method-name
+form covers every overload of that name; the `When` forms tell overloads apart.
+
 The method-name and `When` forms are separate expectations: `Expect.Once( 'M' )` alongside
 `Expect.Once.When.M( 1 )` is two expectations, not a clash. `Between( a, b )` with `b < a` can never
 be met and raises `EMockSetupException` at setup.
@@ -240,7 +248,9 @@ Then:
 mock.Verify( 'the message shown when an expectation fails' );
 ```
 
-`Verify` raises `EMockVerificationException` whose message is yours, a CRLF, and the detail. If
+`Verify` raises `EMockVerificationException` whose message is yours ( when you gave one ), then a line
+naming the mocked type — `[IMyService] has unmet expectations:` — and the detail, method by method in
+name order, with text arguments in quotes so an empty one shows as `''`. If
 you would rather assert than catch, `CheckExpectations` returns the same detail as a string and
 `''` when everything was satisfied:
 
@@ -275,7 +285,7 @@ worth knowing early:
 | `IsInRange<T>( a, b )` | an inclusive range, in `TComparer<T>.Default` order |
 | `IsIn<T>` / `IsNotIn<T>` | membership of an array or an `IEnumerable<T>` |
 | `IsRegex( pattern )` | a string parameter |
-| `AreSameFieldsThat<T>` / `AreSamePropertiesThat<T>` | an object equal field-by-field or property-by-property rather than by identity |
+| `AreSameFieldsThat<T>` / `AreSamePropertiesThat<T>` | an object equal field-by-field or property-by-property rather than by identity. Only **public and published** members count, and objects of different classes never match. A class whose state is all private is refused when you set it up; use `Matches<T>` for it. |
 
 ### Two traps, both real
 
@@ -293,8 +303,9 @@ mock.Setup.Expect.Once.When.M( It0.IsAny<Integer>, It1.IsEqualTo<string>( 'liter
 
 **Each `ItN` once per setup, numbered by position.** Using the same index twice — `It0` copied
 onto the second parameter — raises `EMockSetupException`:
-`A matcher was already given for parameter 0. …`. A matcher evaluated anywhere other than inside
-a `When` call is discarded at the next ordinary call, so it cannot leak into a later setup.
+`A matcher was already given for parameter 0. …`. A matcher written anywhere other than inside
+a `When` call, or left behind by a setup that failed, is thrown away before it can attach itself to
+a later setup.
 
 Upstream had a third trap here — two `Never.When.ExtendedMethod( It0.IsAny<…> )` setups for
 different classes failing on the second line as an "already defined" behaviour. **This fork
@@ -432,7 +443,20 @@ freed.` — rather than an access violation. Keep the mock alive as long as the 
 The one place ownership is not what you expect: **a mock of a class frees the wrapped instance
 unconditionally**, even when you supplied it through `TMock<T>.Create( ACreateObjectFunc )`. Do
 not free it yourself as well. This is deliberate and left alone — changing it would be an
-ownership-contract change.
+ownership-contract change. The exception is a reference-counted class ( a `TInterfacedObject`
+descendant ): the code under test may take an interface to the instance and let it go, and if it
+still holds one when the mock goes, the instance stays alive for it.
+
+**Do not let a `WillExecute` function use its own mock variable.** The mock keeps the function and
+the function would keep the mock, so neither is ever freed and the leak check reports the test. Use
+`mock.Instance` taken into a variable before the setup instead, or call `mock.Free` when the test is
+done with the mock.
+
+### Threads
+
+The code you test may call a mock from several threads at once; every call is counted. Set the mock
+up, and verify it, on the test's own thread. A `WillExecute` function may wait for another thread,
+but a `Matches<T>` predicate must not: predicates run while the mock is locked.
 
 ### After a RAD Studio update, suspect `ReturnTypePatch` first
 
@@ -444,14 +468,16 @@ patch RTTI. The layout still matches RAD Studio 37.0, but if Embarcadero reorder
 
 Build `Tests\Delphi.Mocks.Tests.dproj` and run the executable. It is a DUnitX console runner that
 sets `runner.UseRTTI := True` **and** the fixtures also register themselves explicitly with
-`TDUnitX.RegisterTestFixture` — 21 `[TestFixture]` attributes across 19 units, and 23 explicit
+`TDUnitX.RegisterTestFixture` — 22 `[TestFixture]` attributes across 20 units, and 24 explicit
 registrations. **Keep both mechanisms.** Turning `UseRTTI` off does not prevent a double run — our
 fork dedupes a fixture registered both ways — it silently *deletes* the fixtures that have only the
 attribute.
 
-The runner sets `runner.FailsOnNoAsserts := False` and exits `EXIT_ERRORS` when anything failed,
-so the process exit code is usable in a pipeline. Pass an XML output file through DUnitX's own
-options to get an NUnit-format report.
+It runs every test twice under FastMM5 ( a warm-up pass, then a measured one ) and fails a test
+that leaks memory. The exit code is usable in a pipeline: 0 when everything passed, otherwise the
+number of failures, errors and confirmed leaks ( at most 249 ); 250 when no tests ran; 251 when the
+runner itself failed. Pass an XML output file through DUnitX's own options to get an NUnit-format
+report. A Win64 run shows 4 tests ignored and a Win32 run 5; `Tests\README.md` says why.
 
 ### Run the examples
 
@@ -473,3 +499,4 @@ failure prints the exception and exits 1.
 
 ---
 *Version: 1.0 – 21 November 2026 10:28*
+*Version: 1.1 – 21 November 2026 11:47*

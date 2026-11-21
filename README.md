@@ -82,7 +82,8 @@ This can easily be solved by using `.IsNotNil<TMyClass>`:
 > **This fork:** the first pair of setups above no longer fails. Setup compares definitions, not calls, and a
 > matcher-based setup is never a redefinition, so both are accepted. `IsNotNil<T>` is still the matcher to use when
 > a nil argument must not match. See [Help.md](Help.md) for the rest of this fork's matcher rules (all or none per
-> setup, each `ItN` once).
+> setup, each `ItN` once; the `AreSame…` matchers compare public and published members only and refuse a type
+> that has none; a literal argument matches only one of the same type, so overloads do not answer for each other).
 
 # Example
 
@@ -185,3 +186,4 @@ trailer. glldelphi-mocks is an independent fork and is not affiliated with or en
 
 ---
 *Version: 1.0 – 21 November 2026 10:28*
+*Version: 1.1 – 21 November 2026 11:47*

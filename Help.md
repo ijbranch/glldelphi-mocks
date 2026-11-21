@@ -386,6 +386,11 @@ These are the reason to prefer this fork, and each one is a real defect rather t
 | **`TMatcherFactory` double free** — `Delphi.Mocks.ParamMatcher.pas` | it freed matcher lists by hand although the dictionary owns them (`doOwnsValues`) — a double free on any aborted `Setup`. |
 | **Pointer comparison truncated to `Integer`** — `Delphi.Mocks.Helpers.pas` | two instances exactly 4 GiB apart compared equal. Now compared by sign. |
 | **12 × `W1029` in every consuming build** — `Delphi.Mocks.Expectation.pas` | the unit told callers to put `{$WARN DUPLICATE_CTOR_DTOR OFF}` in their `.dpr`, but a `{$WARN}` there does not affect how a separate unit is compiled, so the advice never worked. The directive now sits in the unit that emits the warnings; a consuming build went from 13 warnings to 1. |
+| **Mocks were not safe across threads** — `Delphi.Mocks.Proxy.pas`, `.MethodData.pas`, `.Utils.pas` | four threads making 40,000 calls lost 512 of them, and a call from another thread could complete a pending setup. A shared lock now guards the bookkeeping only, and a setup belongs to its thread. |
+| **`AreSameFieldsThat` matched any instance of a class with private fields** — `Delphi.Mocks.pas` | it compared nothing and answered equal; objects of different classes compared equal too. |
+| **A class mock of a `TInterfacedObject` descendant was freed twice** — `Delphi.Mocks.ObjectProxy.pas` | the code under test releasing an interface freed it, and the mock freed it again. |
+| **Matchers from a failed setup attached to the next one; a call on another mock in a `When` lost them** — `Delphi.Mocks.ParamMatcher.pas`, `.Proxy.pas` | a later literal setup answered calls it was never set up for, or a valid setup was refused. |
+| **Overloads answered each other's setups; settings changed after first use were ignored; `IsEqualTo` compared records by bytes; NaN never matched** — `Delphi.Mocks.Helpers.pas`, `.MethodData.pas`, `.pas` | see `CHANGELOG.md`, 2026-11-21, for these and the smaller fixes of the same review. |
 | **`.gitmodules` broke `clone --recursive`** | it declared a `DUnitXML` submodule with no gitlink and no directory. Removed, along with a stray `=======` merge-conflict marker in `.gitignore`. |
 
 ### What was removed
@@ -679,3 +684,4 @@ only external dependency in the repository, and it is a test-time one.
 
 ---
 *Version: 1.0 – 21 November 2026 10:28*
+*Version: 1.1 – 21 November 2026 11:47*
