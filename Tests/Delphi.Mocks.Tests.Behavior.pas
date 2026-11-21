@@ -256,10 +256,10 @@ var
 begin
   behavior := TBehavior.CreateWillRaiseWhen(nil, nil, '', FMatchers);
 
-  //No exception class, therefore no exception
+  //No exception class, therefore no exception, and no value either
   Assert.WillNotRaiseAny(procedure
   begin
-    behavior.Execute(nil, nil);
+    Assert.IsTrue(behavior.Execute(nil, nil).IsEmpty, 'A raising behaviour with no class returned a value');
   end);
 end;
 
@@ -325,10 +325,10 @@ var
 begin
   behavior := TBehavior.CreateWillRaise(nil, '');
 
-  //No exception class, therefore no exception
+  //No exception class, therefore no exception, and no value either
   Assert.WillNotRaiseAny(procedure
   begin
-    behavior.Execute(nil, nil);
+    Assert.IsTrue(behavior.Execute(nil, nil).IsEmpty, 'A raising behaviour with no class returned a value');
   end);
 end;
 

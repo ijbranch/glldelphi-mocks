@@ -77,20 +77,24 @@ type
 /// <param name="ATypeInfo">The interface.</param>
 /// <exception cref="EArgumentException">ATypeInfo is not an interface with RTTI.</exception>
 /// <exception cref="EOSError">The RTTI could not be written.</exception>
+/// <exception cref="EInvalidOpException">Too many distinct return types have been patched.</exception>
 procedure PatchMethodReturnType(ATypeInfo: PTypeInfo); overload;
 /// <summary>Patches one method of an interface, found by name without regard to case, if it has no return type.
 /// </summary>
 /// <param name="ATypeInfo">The interface.</param>
 /// <param name="AMethodName">The method.</param>
 /// <param name="AReturnType">The method's real return type.</param>
-/// <exception cref="EArgumentException">ATypeInfo is not an interface with RTTI.</exception>
+/// <exception cref="EArgumentException">ATypeInfo is not an interface with RTTI, or declares no method named
+/// AMethodName.</exception>
 /// <exception cref="EOSError">The RTTI could not be written.</exception>
+/// <exception cref="EInvalidOpException">Too many distinct return types have been patched.</exception>
 procedure PatchMethodReturnType(const ATypeInfo: PTypeInfo; const AMethodName : string; const AReturnType: PTypeInfo); overload;
 /// <summary>Patches one interface method, if it has no return type.</summary>
 /// <param name="AMethod">The method; it must belong to an interface.</param>
 /// <param name="AReturnType">The method's real return type.</param>
 /// <exception cref="EArgumentException">AMethod is not an interface method.</exception>
 /// <exception cref="EOSError">The RTTI could not be written, or did not take the new value.</exception>
+/// <exception cref="EInvalidOpException">Too many distinct return types have been patched.</exception>
 procedure PatchMethodReturnType(AMethod: TRttiMethod; AReturnType: PTypeInfo); overload;
 
 implementation
@@ -147,18 +151,28 @@ procedure PatchMethodReturnType(const ATypeInfo: PTypeInfo; const AMethodName : 
 var
   LContext: TRttiContext;
   LMethod: TRttiMethod;
+  LFound: Boolean;
 begin
+  LFound := False;
   LContext := TRttiContext.Create;
   try
     for LMethod in InterfaceType(LContext, ATypeInfo).GetDeclaredMethods do
     begin
       //Pascal names are not case sensitive; a caller's different casing silently patched nothing.
-      if SameText(LMethod.Name, AMethodName) and NeedsPatch(LMethod) then
-        PatchMethodReturnType(LMethod, AReturnType);
+      if SameText(LMethod.Name, AMethodName) then
+      begin
+        LFound := True;
+        if NeedsPatch(LMethod) then
+          PatchMethodReturnType(LMethod, AReturnType);
+      end;
     end;
   finally
     LContext.Free;
   end;
+
+  //A misspelt name patched nothing, and the mock failed much later, far from the cause
+  if not LFound then
+    raise EArgumentException.CreateFmt('%s declares no method named %s', [string(ATypeInfo^.Name), AMethodName]);
 end;
 
 
@@ -189,7 +203,7 @@ end;
 /// <summary>Returns the static slot holding a return type, adding one for a type not seen before.</summary>
 /// <param name="AReturnType">The return type.</param>
 /// <returns>The slot's address.</returns>
-/// <exception cref="EOSError">Every slot is in use.</exception>
+/// <exception cref="EInvalidOpException">Every slot is in use.</exception>
 function ReturnTypeSlot(AReturnType: PTypeInfo): PPTypeInfo;
 var
   i: Integer;
@@ -201,7 +215,8 @@ begin
         Exit(@ReturnTypes[i]);
 
     if ReturnTypeCount = MAX_RETURN_TYPES then
-      raise EOSError.CreateFmt('PatchMethodReturnType supports at most %d distinct return types', [MAX_RETURN_TYPES]);
+      //Not EOSError: no operating system call failed
+      raise EInvalidOpException.CreateFmt('PatchMethodReturnType supports at most %d distinct return types', [MAX_RETURN_TYPES]);
 
     ReturnTypes[ReturnTypeCount] := AReturnType;
     Result := @ReturnTypes[ReturnTypeCount];

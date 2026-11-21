@@ -42,6 +42,8 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
+        <AppDPIAwarenessMode>unaware</AppDPIAwarenessMode>
+        <DCC_CBuilderOutput>None</DCC_CBuilderOutput>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_AutoIncVersion>true</VerInfo_AutoIncVersion>
         <VerInfo_MajorVer>0</VerInfo_MajorVer>
@@ -97,9 +99,9 @@
         <VerInfo_MajorVer>0</VerInfo_MajorVer>
         <VerInfo_MinorVer>3</VerInfo_MinorVer>
         <VerInfo_Release>2</VerInfo_Release>
-        <VerInfo_Build>4</VerInfo_Build>
+        <VerInfo_Build>5</VerInfo_Build>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=GITLAK Software;FileDescription=Delphi Mocks demonstration;FileVersion=0.3.2.4;InternalName=;LegalCopyright=Apache License 2.0;LegalTrademarks=;OriginalFilename=;ProductName=Delphi Mocks;ProductVersion=0.3.2.4;Comments=</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=GITLAK Software;FileDescription=Delphi Mocks demonstration;FileVersion=0.3.2.5;InternalName=;LegalCopyright=Apache License 2.0;LegalTrademarks=;OriginalFilename=;ProductName=Delphi Mocks;ProductVersion=0.3.2.5;Comments=</VerInfo_Keys>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
@@ -176,8 +178,6 @@
                 </Excluded_Packages>
             </Delphi.Personality>
             <Deployment>
-                <DeployFile LocalName="$(BDS)\Redist\osx32\libcgunwind.1.0.dylib" Class="DependencyModule">
-                </DeployFile>
                 <DeployFile LocalName="Win32\Debug\Sample1.rsm" Configuration="Debug" Class="DebugSymbols">
                     <Platform Name="Win32">
                         <RemoteName>Sample1.rsm</RemoteName>
@@ -202,34 +202,6 @@
                         <Extensions>.dll;.bpl</Extensions>
                     </Platform>
                 </DeployClass>
-                <DeployClass Name="iPad_Launch2048">
-                </DeployClass>
-                <DeployClass Name="ProjectOSXInfoPList"/>
-                <DeployClass Name="ProjectiOSDeviceDebug">
-                </DeployClass>
-                <DeployClass Name="Android_SplashImage470">
-                </DeployClass>
-                <DeployClass Name="AndroidLibnativeX86File">
-                </DeployClass>
-                <DeployClass Name="ProjectiOSResource">
-                </DeployClass>
-                <DeployClass Name="ProjectOSXEntitlements"/>
-                <DeployClass Name="AndroidGDBServer">
-                </DeployClass>
-                <DeployClass Name="iPhone_Launch640">
-                </DeployClass>
-                <DeployClass Name="Android_SplashImage960">
-                </DeployClass>
-                <DeployClass Name="Android_LauncherIcon96">
-                </DeployClass>
-                <DeployClass Name="iPhone_Launch320">
-                </DeployClass>
-                <DeployClass Name="Android_LauncherIcon144">
-                </DeployClass>
-                <DeployClass Name="AndroidLibnativeMipsFile">
-                </DeployClass>
-                <DeployClass Name="AndroidSplashImageDef">
-                </DeployClass>
                 <DeployClass Name="DebugSymbols">
                     <Platform Name="Win32">
                         <Operation>0</Operation>
@@ -240,8 +212,6 @@
                         <Operation>0</Operation>
                     </Platform>
                 </DeployClass>
-                <DeployClass Name="Android_SplashImage426">
-                </DeployClass>
                 <DeployClass Name="ProjectiOSEntitlements"/>
                 <DeployClass Name="AdditionalDebugSymbols">
                     <Platform Name="Win32">
@@ -249,45 +219,15 @@
                         <Operation>0</Operation>
                     </Platform>
                 </DeployClass>
-                <DeployClass Name="AndroidClassesDexFile">
-                </DeployClass>
-                <DeployClass Name="ProjectiOSInfoPList"/>
-                <DeployClass Name="iPad_Launch1024">
-                </DeployClass>
-                <DeployClass Name="Android_DefaultAppIcon">
-                </DeployClass>
-                <DeployClass Name="ProjectOSXResource">
-                </DeployClass>
-                <DeployClass Name="ProjectiOSDeviceResourceRules"/>
-                <DeployClass Name="iPad_Launch768">
-                </DeployClass>
                 <DeployClass Required="true" Name="ProjectOutput">
                     <Platform Name="Win32">
                         <Operation>0</Operation>
                     </Platform>
                 </DeployClass>
-                <DeployClass Name="AndroidLibnativeArmeabiFile">
-                </DeployClass>
-                <DeployClass Name="Android_SplashImage640">
-                </DeployClass>
                 <DeployClass Name="File">
                     <Platform Name="Win32">
                         <Operation>0</Operation>
                     </Platform>
-                </DeployClass>
-                <DeployClass Name="iPhone_Launch640x1136">
-                </DeployClass>
-                <DeployClass Name="Android_LauncherIcon36">
-                </DeployClass>
-                <DeployClass Name="AndroidSplashStyles">
-                </DeployClass>
-                <DeployClass Name="iPad_Launch1536">
-                </DeployClass>
-                <DeployClass Name="Android_LauncherIcon48">
-                </DeployClass>
-                <DeployClass Name="Android_LauncherIcon72">
-                </DeployClass>
-                <DeployClass Name="ProjectAndroidManifest">
                 </DeployClass>
                 <ProjectRoot Platform="Win32" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>

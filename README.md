@@ -182,3 +182,6 @@ a unit the fork added carries its own header. The changes were developed with
 tests and documentation under Ian Branch's direction; commits it contributed to carry a `Co-Authored-By: Claude`
 trailer. glldelphi-mocks is an independent fork and is not affiliated with or endorsed by VSoft Technologies;
 "Delphi Mocks" refers to the upstream project it derives from.
+
+---
+*Version: 1.0 – 21 November 2026 10:28*

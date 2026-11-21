@@ -463,7 +463,8 @@ begin
   //start at 1 as we don't care about matching the first arg (self)
   for i := 1 to Length(args) -1 do
   begin
-    if not FArgs[i -1].Equals(args[i]) then
+    //The type as well as the value: an overload with an argument of the same ordinal value is another method.
+    if not (SameArgType(FArgs[i -1], args[i]) and FArgs[i -1].Equals(args[i])) then
       exit;
   end;
   result := True;

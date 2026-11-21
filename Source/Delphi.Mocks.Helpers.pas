@@ -194,6 +194,15 @@ function SameValue(const Left, Right: TValue): Boolean;
 /// <param name="Value">The argument as the proxy received it.</param>
 /// <returns>Value itself, or for a static array a TArray&lt;TValue&gt; holding copies of its elements.</returns>
 function DetachedArgValue(const Value: TValue): TValue;
+/// <summary>Whether a kept setup argument and a call's argument are of the same parameter type, so the call can be
+/// to the same overload.  Overloads that differ only in a parameter's type ( Foo(Integer) / Foo(Boolean) ) share one
+/// method's setups, and their arguments compare equal by ordinal value, so Foo(True) matched Foo(1).</summary>
+/// <remarks>An array on either side is not compared by type: DetachedArgValue keeps a static array as a
+/// TArray&lt;TValue&gt;, whose type is not the call's.</remarks>
+/// <param name="AStored">The argument the setup kept.</param>
+/// <param name="ACall">The call's argument.</param>
+/// <returns>True when the types agree, or either is unknown or an array.</returns>
+function SameArgType(const AStored, ACall: TValue): Boolean;
 
 
 implementation
@@ -247,6 +256,7 @@ var
   leftIsEmpty, rightIsEmpty: Boolean;
   leftFloat, rightFloat: Extended;
   leftMethod, rightMethod: TMethod;
+  leftIsString, rightIsString: Boolean;
 begin
   leftIsEmpty := left.IsEmpty;
   rightIsEmpty := right.IsEmpty;
@@ -260,7 +270,11 @@ begin
     //which is 1E-19 on Win32 and 1E-15 on Win64, so the same test matched on one and not the other.
     leftFloat := left.AsExtended;
     rightFloat := right.AsExtended;
-    if leftFloat = rightFloat then
+    //NaN equals nothing under IEEE, itself included, so a setup made with NaN never matched a call with NaN, and
+    //the order was not antisymmetric.  Two NaNs are equal here, and NaN sorts before every number.
+    if IsNan(leftFloat) or IsNan(rightFloat) then
+      Result := Ord(not IsNan(leftFloat)) - Ord(not IsNan(rightFloat))
+    else if leftFloat = rightFloat then
       Result := 0
     else if leftFloat < rightFloat then
       Result := -1
@@ -289,6 +303,14 @@ begin
   begin
     //tkVariant covers OleVariant as well as Variant. Variants that cannot be compared (a
     //string with an integer) raised out of argument matching; they are simply unequal.
+    //A string is compared only with a string, and ordinally as plain strings are: VarCompareValue converted
+    //'1' to 1, so the two matched, and compared strings through the locale.
+    leftIsString := VarIsStr(left.AsVariant);
+    rightIsString := VarIsStr(right.AsVariant);
+    if leftIsString and rightIsString then
+      Exit(System.SysUtils.CompareStr(VarToStr(left.AsVariant), VarToStr(right.AsVariant)));
+    if leftIsString <> rightIsString then
+      Exit(Ord(rightIsString) - Ord(leftIsString));
     try
       case VarCompareValue(left.AsVariant, right.AsVariant) of
         vrEqual: Result := 0;
@@ -312,14 +334,14 @@ begin
     //which refuses managed types, and the RTL counts method pointers as managed.
     left.ExtractRawDataNoCopy(@leftMethod);
     right.ExtractRawDataNoCopy(@rightMethod);
-    if (leftMethod.Code = rightMethod.Code) and (leftMethod.Data = rightMethod.Data) then
-      Result := 0
-    else
-      Result := -1;
+    //Ordered by code, then instance: an unequal pair used to give -1 both ways round.
+    Result := System.Math.CompareValue(NativeUInt(leftMethod.Code), NativeUInt(rightMethod.Code));
+    if Result = 0 then
+      Result := System.Math.CompareValue(NativeUInt(leftMethod.Data), NativeUInt(rightMethod.Data));
   end
   else
-    //Sets, method pointers (events), procedure pointers and anything else: equal only when the
-    //bytes of one unmanaged type agree. This used to return 0, so any two such values matched.
+    //Sets, procedure pointers and anything else: equal only when the bytes of one unmanaged
+    //type agree. This used to return 0, so any two such values matched.
     Result := CompareRaw(left, right);
 end;
 
@@ -349,6 +371,7 @@ end;
 function CompareValue_Record(const Left, Right: TValue): Integer;
 var
   LMethod: TRttiMethod;
+  LParams: TArray<TRttiParameter>;
   LType: TRttiType;
   LField: TRttiField;
   LFields: TArray<TRttiField>;
@@ -360,12 +383,20 @@ begin
   if LType = nil then
     Exit(CompareRaw(Left, Right));
 
-  if LType.TryGetMethod('&op_Equality', LMethod) then begin
-    if LMethod.Invoke(nil, [Left, Right]).AsBoolean then
-      Result := 0
-    else
-      Result := -1;
-    Exit;
+  //The = overload taking two of this record: TryGetMethod took the first one, which may compare with another type,
+  //and invoking it with two records raised out of an intercepted call.
+  for LMethod in LType.GetMethods('&op_Equality') do
+  begin
+    LParams := LMethod.GetParameters;
+    if (Length(LParams) = 2) and (LParams[0].ParamType <> nil) and (LParams[1].ParamType <> nil)
+      and (LParams[0].ParamType.Handle = Left.TypeInfo) and (LParams[1].ParamType.Handle = Left.TypeInfo) then
+    begin
+      if LMethod.Invoke(nil, [Left, Right]).AsBoolean then
+        Result := 0
+      else
+        Result := -1;
+      Exit;
+    end;
   end;
 
   //No equality operator: compare field by field. This used to return 0, so any two records of
@@ -583,6 +614,15 @@ function TRttiTypeHelper.TryGetMethod(const AName: string; out AMethod: TRttiMet
 begin
   AMethod := GetMethod(AName);
   Result := Assigned(AMethod);
+end;
+
+function SameArgType(const AStored, ACall: TValue): Boolean;
+begin
+  if (AStored.TypeInfo = nil) or (ACall.TypeInfo = nil) then
+    Exit(True);
+  if (AStored.Kind in [tkArray, tkDynArray]) or (ACall.Kind in [tkArray, tkDynArray]) then
+    Exit(True);
+  Result := AStored.TypeInfo = ACall.TypeInfo;
 end;
 
 { TRttiMethodHelper }

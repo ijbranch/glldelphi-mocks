@@ -205,6 +205,20 @@ type
     /// <exception cref="EMockException">No behaviour, default or automock supplies a required return value, or
     /// BehaviorMustBeDefined is set and nothing was defined.</exception>
     procedure RecordHit(const Args: TArray<TValue>; const returnType : TRttiType; const method : TRttiMethod; out Result : TValue);
+    /// <summary>Records a call and produces its result, with the behaviour the caller already found.</summary>
+    /// <param name="Args">The call's arguments; Args[0] is Self.</param>
+    /// <param name="returnType">The method's return type, or nil for a procedure.</param>
+    /// <param name="method">The method's RTTI, or nil when unknown.</param>
+    /// <param name="behavior">The behaviour FindBestBehavior found for Args, or nil.</param>
+    /// <param name="Result">The value to return from the call.</param>
+    /// <exception cref="EMockException">No behaviour, default or automock supplies a required return value, or
+    /// BehaviorMustBeDefined is set and nothing was defined.</exception>
+    procedure RecordHitWithBehavior(const Args: TArray<TValue>; const returnType : TRttiType; const method : TRttiMethod;
+      const behavior : IBehavior; out Result: TValue);
+    /// <summary>Applies the proxy's current settings.</summary>
+    /// <param name="ABehaviorMustBeDefined">Whether a call with no behaviour or expectation must raise.</param>
+    /// <param name="AAllowRedefineBehaviorDefinitions">Whether a definition may replace an existing one.</param>
+    procedure UpdateSettings(const ABehaviorMustBeDefined, AAllowRedefineBehaviorDefinitions : Boolean);
 
     //Expectations
     /// <summary>Finds the first expectation of a type that a call counts towards.</summary>
@@ -588,12 +602,10 @@ begin
   autoMocker := GetAutoMocker;
   if autoMocker <> nil then
   begin
-    if returnType = nil then
-      Exit;
-
     //Only interfaces can be auto mocked: a class proxy needs an instance, and records were
-    //handed to TAutoMock.Mock, which always rejected them.
-    if returnType.TypeKind = tkInterface then
+    //handed to TAutoMock.Mock, which always rejected them.  An auto mocked result is the container's behaviour for
+    //the call, so BehaviorMustBeDefined does not refuse it.
+    if (returnType <> nil) and (returnType.TypeKind = tkInterface) then
     begin
       mock := autoMocker.Mock(returnType.Handle);
       //Return the mocked interface itself, typed as the method's return type. Returning the
@@ -603,11 +615,23 @@ begin
 
       //Add a behaviour to return the same mock next time.
       behavior := TBehavior.CreateWillReturnWhen(Args, Result, TArray<IMatcher>.Create());
-      FBehaviors.Add(behavior);
-    end
-    else
-      Result := FReturnDefault;
+      EnterMockLock;
+      try
+        FBehaviors.Add(behavior);
+      finally
+        LeaveMockLock;
+      end;
+      Exit;
+    end;
 
+    //Enforced here too, for what the container cannot supply ( a procedure, a non-interface result ): the auto
+    //mock path returned before the check, so the setting did nothing on a mock made by a container.  The no-default
+    //check stays off on this path.
+    if FSetupParameters.BehaviorMustBeDefined and (AExpectationHitCtr = 0) and (not FReturnDefaultDefined) then
+      raise EMockException.Create(Format('[%s] has no behaviour or expectation defined for method [%s]', [FTypeName, FMethodName]));
+
+    if returnType <> nil then
+      Result := FReturnDefault;
     Exit;
   end;
 
@@ -728,26 +752,54 @@ end;
 procedure TMethodData.RecordHit(const Args: TArray<TValue>; const returnType : TRttiType; const method : TRttiMethod; out Result: TValue);
 var
   behavior : IBehavior;
+begin
+  //The search under the shared lock, as the behaviour list may grow on another thread ( an auto mocked result )
+  EnterMockLock;
+  try
+    behavior := FindBestBehavior(Args);
+  finally
+    LeaveMockLock;
+  end;
+  RecordHitWithBehavior(Args, returnType, method, behavior, Result);
+end;
+
+procedure TMethodData.UpdateSettings(const ABehaviorMustBeDefined, AAllowRedefineBehaviorDefinitions : Boolean);
+begin
+  FSetupParameters.BehaviorMustBeDefined := ABehaviorMustBeDefined;
+  FSetupParameters.AllowRedefineBehaviorDefinitions := AAllowRedefineBehaviorDefinitions;
+end;
+
+procedure TMethodData.RecordHitWithBehavior(const Args: TArray<TValue>; const returnType : TRttiType;
+  const method : TRttiMethod; const behavior : IBehavior; out Result: TValue);
+var
   expectation : IExpectation;
   expectationHitCtr: integer;
   returnValue : TValue;
 begin
-  //Log the call before counting it, so the ordering expectations can read its sequence number.
-  if FCallLog <> nil then
-    FCallLog.RecordCall(FMethodName);
-
+  //The bookkeeping under the shared lock, so calls from several threads are each logged and counted.  The
+  //behaviour runs after it, outside the lock: it is user code ( a WillExecute function, an exception's
+  //constructor ) that may wait on another thread calling a mock, and holding the lock then deadlocked both.
+  //Matcher predicates do run under it, while expectations are matched: they must not wait on such a thread.
   expectationHitCtr := 0;
-  for expectation in FExpectations do
-  begin
-    if expectation.Match(Args) then
+  EnterMockLock;
+  try
+    //Log the call before counting it, so the ordering expectations can read its sequence number.
+    if FCallLog <> nil then
+      FCallLog.RecordCall(FMethodName);
+
+    for expectation in FExpectations do
     begin
-      expectation.RecordHit;
-      inc(expectationHitCtr);
+      if expectation.Match(Args) then
+      begin
+        expectation.RecordHit;
+        inc(expectationHitCtr);
+      end;
     end;
+  finally
+    LeaveMockLock;
   end;
 
   returnValue := TValue.Empty;
-  behavior := FindBestBehavior(Args);
   if behavior <> nil then
     returnValue := behavior.Execute(Args, returnType)
   else if FSetupParameters.IsStub or (method = nil) or method.IsAbstract or (not method.IsVirtual) then

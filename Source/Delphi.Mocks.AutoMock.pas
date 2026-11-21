@@ -33,6 +33,8 @@ type
     /// <returns>The mock's proxy.</returns>
     /// <exception cref="EMockException">The type is not an interface.</exception>
     /// <exception cref="EMockNoRTTIException">The interface has no RTTI.</exception>
+    /// <exception cref="EMockNoProxyException">The proxy built does not implement IProxy ( an internal error ).
+    /// </exception>
     function Mock(const ATypeInfo : PTypeInfo) : IProxy;
     /// <summary>Keeps a mock created elsewhere for the container's lifetime.</summary>
     /// <param name="ATypeName">The mocked type's name; not used.</param>
@@ -47,6 +49,7 @@ type
 implementation
 
 uses
+  Delphi.Mocks.Utils,
   Delphi.Mocks.Validation,
   Delphi.Mocks.Proxy.TypeInfo;
 
@@ -54,7 +57,13 @@ uses
 
 procedure TAutoMock.Add(const ATypeName : string; const AMock: IProxy);
 begin
-  FMocks.Add(AMock);
+  //Under the shared lock: a mock called on several threads can auto mock on several at once
+  EnterMockLock;
+  try
+    FMocks.Add(AMock);
+  finally
+    LeaveMockLock;
+  end;
 end;
 
 constructor TAutoMock.Create;
@@ -93,7 +102,12 @@ begin
   proxy := TProxy.Create(ATypeInfo, Self, false);
   proxyAsType := proxy.ProxyFromType(ATypeInfo);
 
-  FMocks.Add(proxy);
+  EnterMockLock;
+  try
+    FMocks.Add(proxy);
+  finally
+    LeaveMockLock;
+  end;
 
   //Push the proxy into the result we are returning. Every TProxy implements IProxy, so failing
   //here means an internal error rather than a user mistake.

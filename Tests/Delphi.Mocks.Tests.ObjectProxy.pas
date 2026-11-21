@@ -272,6 +272,8 @@ begin
   mock.Setup.WillReturnDefault('VirtualMethod', 1);
 
   Assert.IsFalse(mock.Instance.VirtualMethodCalled);
+  //The setup was recorded, not merely skipped: its unmet expectation fails Verify
+  Assert.WillRaise(procedure begin mock.Verify end, EMockVerificationException, 'The expectation was not registered');
 end;
 
 procedure TTestObjectProxy.VirtualMethodNotCalledIfBehaviorMatches;

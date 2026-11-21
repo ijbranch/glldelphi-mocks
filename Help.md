@@ -85,14 +85,22 @@ Available on both `TStub<T>.Setup` and `TMock<T>.Setup`.
 | `WillReturnDefault( const AMethodName: string; const value: TValue )` | The value returned when the method is called with arguments you did **not** describe. A nil or empty value is allowed. On a class mock it also stops the real virtual method running. |
 | `WillExecute( const func: TExecuteFunc ): IWhen<T>` | Run `func` for the call described by the following `.When`. |
 | `WillExecute( const AMethodName: string; const func: TExecuteFunc )` | Run `func` for **every** call to that method, whatever the arguments. |
-| `WillRaise( const exceptionClass: ExceptClass; const message: string = '' ): IWhen<T>` | Raise for the call described by the following `.When`. |
+| `WillRaise( const exceptionClass: ExceptClass; const message: string = '' ): IWhen<T>` | Raise for **every** call of the method named by the following `.When`, whatever its arguments: the `When` call's arguments only name the method. Use `WillRaiseWhen` to raise for particular arguments. A nil class raises `EMockSetupException`. |
 | `WillRaise( const AMethodName: string; const exceptionClass: ExceptClass; const message: string = '' )` | Always raise for that method. **This trumps any other behaviour defined for it.** |
-| `WillRaiseWhen( const exceptionClass: ExceptClass; const message: string = '' ): IWhen<T>` | As `WillRaise`, in the `When` form. |
-| `BehaviorMustBeDefined: Boolean` | When true, a call to a method with no defined behaviour makes `Verify` fail. |
-| `AllowRedefineBehaviorDefinitions: Boolean` | When true, a behaviour may be defined a second time for the same call. |
+| `WillRaiseWhen( const exceptionClass: ExceptClass; const message: string = '' ): IWhen<T>` | Raise for the call described by the following `.When`: only a call whose arguments match. A nil class raises `EMockSetupException`. |
+| `BehaviorMustBeDefined: Boolean` | When true, a call to a method with no behaviour, default or expectation raises `EMockException` **at the call** ( it does not make `Verify` fail, so code under test that catches exceptions hides it ). Applies to auto mocked mocks too, except for an interface result the container supplies, and a change applies to methods already used. |
+| `AllowRedefineBehaviorDefinitions: Boolean` | When true, a behaviour may be defined a second time for the same call. A change applies to methods already used. |
 
-The `When` forms of `WillRaise` / `WillRaiseWhen` raise only for a call whose arguments match, and
-raise with **your** message.
+`WillRaise` and `WillRaiseWhen` raise with **your** message, through the exception class's own
+`Create( const Msg: string )` constructor when it declares one, so a descendant's constructor runs.
+
+**Setups by method name** ( `WillReturnDefault( 'Foo', … )`, `Expect.Once( 'Foo' )`, `Before( 'Foo', 'Bar' )`
+and the rest ) check the name against the mocked type, case-insensitively, and raise `EMockSetupException`
+for a name it does not have: an expectation on a misspelt or renamed method could otherwise never fail. They
+also raise `EMockSetupException` when a `When` setup is still pending ( its `Setup` reference held in a
+variable and `When` never called ), rather than silently discarding it. A name stands for **every overload**
+of that name: `Expect.Once( 'Foo' )` counts `Foo( Integer )` and `Foo( Boolean )` alike. The `When` forms
+tell overloads apart ( see *How literal arguments are compared* ).
 
 **Which behaviour answers a call.** The behaviour *types* are tried in a fixed order: `WillRaise`
 for the method (always), then `WillRaise…When`, `WillExecute` for the method, `WillExecute…When`,
@@ -176,8 +184,14 @@ mock.Setup.Expect.Once.When.SimpleMethod( It0.IsAny<Integer>, It1.IsAny<String> 
 
 Matchers are **all or none**: once one parameter of a setup uses a matcher, every parameter must,
 or the setup raises `EMockSetupException` — behaviour and expectation setups alike. Each index may
-be used once per setup; a second matcher for the same index raises `EMockSetupException`. A matcher
-evaluated outside a `When` is discarded at the next ordinary call.
+be used once per setup; a second matcher for the same index raises `EMockSetupException`, as does a negative
+index ( `It( -1 )` ). A matcher evaluated outside a `When` is discarded at the next ordinary call made while no
+setup is pending on that thread, and the matchers of a setup that is abandoned ( its `When` arguments raised, or
+the call never came ) are discarded with it, so neither can attach itself to the next setup. A call on another
+mock made while a `When`'s arguments are evaluated, after the setup began, leaves the matchers already given
+alone. ( Nothing is cleared when a setup begins: on Win32 the arguments passed on the stack are evaluated before
+the `Setup` chain, so a call on another mock evaluated there too, such as in `WillReturn`'s own argument, still
+clears matchers registered before it. Take such a value into a variable first. )
 
 | Matcher | Matches |
 |---|---|
@@ -194,22 +208,37 @@ evaluated outside a `When` is discarded at the next ordinary call.
 | `IsIn<T>( const values: IEnumerable<T>; const comparer: IEqualityComparer<T> ): T` | the same, with your comparer |
 | `IsNotIn<T>` | the four `IsIn` overloads, negated |
 | `IsRegex( const regex: string; const options: TRegExOptions = [] ): string` | a string matching the pattern |
-| `AreSamePropertiesThat<T>( const Value: T ): T` | an instance whose **published properties** all compare equal |
-| `AreSameFieldsThat<T>( const Value: T ): T` | an instance whose **fields** all compare equal |
+| `AreSamePropertiesThat<T>( const Value: T ): T` | an instance whose readable **public and published properties** all compare equal |
+| `AreSameFieldsThat<T>( const Value: T ): T` | an instance whose **public and published fields** all compare equal |
 | `AreSameFieldsAndPropertiedThat<T>( const Value: T ): T` | both. The spelling is upstream's and is part of the API. |
+
+The three `AreSame…` matchers compare **public and published members only**, and an object member by its
+runtime class: instances of different classes never match, and a descendant's own members are compared too. A
+class mock's `Instance` counts as an instance of its own class ( the interception's generated class is seen
+through ).
+For a class or record with nothing public or published to compare they raise `EMockSetupException` at setup:
+comparing nothing, they used to accept any instance. A class that keeps its state private needs a
+`Matches<T>` predicate instead.
+
+`IsEqualTo`, `IsIn`, `IsNotIn` and `IsNotNil` without a comparer compare records, arrays and interfaces as a
+literal argument is ( below ), not by their bytes or references.
 
 ### How literal arguments are compared
 
 When a setup names literal arguments rather than matchers, a call matches when each argument
 compares equal (`Delphi.Mocks.Helpers.pas`):
 
+- **of the same type**: an argument of another parameter type never matches, so `WillReturn( 5 ).When.Foo( 1 )`
+  does not answer `Foo( True )` when `Foo( Integer )` and `Foo( Boolean )` are overloads ( arrays excepted, as
+  a kept array is stored in a form of its own );
 - **strings** ordinally (`CompareStr`), so case and every character count;
-- **floats** exactly — no tolerance;
-- **records** with an `=` operator by that operator, otherwise **field by field**;
-- **sets, pointers, class references, method pointers** by value;
+- **floats** exactly — no tolerance; **NaN equals NaN**, so a setup made with NaN matches a call with NaN;
+- **records** with an `=` operator taking two of the record by that operator, otherwise **field by field**;
+- **sets, pointers, class references** by value; **method pointers** by code, then instance;
 - **interfaces** by COM identity (the `IInterface` of the object), so two interface references to
   the same object compare equal;
-- **Variants / OleVariants** by `VarCompareValue`; two that cannot be compared are simply unequal.
+- **Variants / OleVariants**: a string only with a string, ordinally ( `'1'` does not match `1` ); otherwise
+  by `VarCompareValue`; two that cannot be compared are simply unequal.
 
 ### `TAutoMockContainer`
 
@@ -279,6 +308,7 @@ source formats them.
 | `TMock<T> was used before Create, or after Free.` | a `TMock<T>` used before `Create` or after `Free` (`TStub<T>` says `TStub<T> …`) |
 | `TAutoMockContainer was used before Create.` | a container used before `Create` |
 | `[<T>].<M> was called after the mock that created it was freed.` | the system under test kept the mocked instance and called it after the mock was released |
+| `The auto mocked [<T>] cannot implement [<I>]` | `AddImplement` on an auto mocked interface ( an internal path; nothing public reaches it ) |
 | `<T> is not an interface. Auto mocking supports interfaces only` | `TAutoMockContainer.Mock( ATypeInfo )` on a class or record |
 | `[<T>] has no behaviour or expectation defined for method [<M>]` | the method was called and nothing was set up for it |
 | `[<T>] has no default return value or return type was defined for method [<M>]` | a function was called with no `WillReturn`/`WillReturnDefault` |
@@ -291,7 +321,11 @@ source formats them.
 | `Setup of [<Method>] used matchers for <n> of its <m> parameters. Use a matcher (It0..It9) for every parameter, or for none.` | some parameters used `ItN` matchers and some did not. **Use matchers on every parameter or on none.** |
 | `Setup of [<Method>] used matchers for some parameters but not others. Use a matcher (It0..It9) for every parameter, or for none.` | the same, where the count happened to agree but an index was skipped |
 | `A matcher was already given for parameter <n>. Use It0 for the first parameter, It1 for the second and so on, once each.` | the same `ItN` used twice in one setup |
-| `Setup called on non-virtual method: the method named after When never reached the mock, because it is not virtual or the mock answers it itself (QueryInterface, _AddRef, _Release)` | a setup was begun and the call after `.When` never arrived |
+| `Setup called on non-virtual method: the method named after When never reached the mock, because it is not virtual, the mock answers it itself (QueryInterface, _AddRef, _Release), or, on a class mock, it is a method TObject declares and the class does not override (ToString, Equals, GetHashCode and the rest) or a construction or destruction method` | a setup was begun and the call after `.When` never arrived; also a setup by method name made while a `When` setup is pending |
+| `[<T>] has no method named [<M>]` | a setup by method name ( or the other method of `Before` / `After` ) names a method the type does not have |
+| `WillRaise needs an exception class: nil would make the call return a default instead of raising` | `WillRaise( nil )` or `WillRaiseWhen( nil )` |
+| `<Matcher><<T>> has nothing to compare: <Matcher> compares public and published members only, and <T> has none, so any instance would match.` | `AreSameFieldsThat`, `AreSamePropertiesThat` or `AreSameFieldsAndPropertiedThat` on a type with nothing public or published of that kind |
+| `It(<n>) is not a parameter: use It0 for the first parameter, It1 for the second and so on.` | a negative matcher index |
 | `Setup.WillReturn called on [<kind>] method [<Method>] which does not have a return value.` | `WillReturn` on a procedure |
 | `Setup.WillReturn call on method [<Method>] was not passed a return value.` | `WillReturn` with nothing to return |
 | `[<T>] Between(<a>, <b>) for method [<M>] can never be met: the maximum is less than the minimum.` | `Between` with `b < a` |
@@ -317,8 +351,9 @@ further interfaces.` — `Implement<I>` on a mock of a class.
 
 ### `EMockVerificationException`
 
-Raised by `Verify` / `VerifyAll`. The message is **your** message, then CRLF, then the text
-`CheckExpectations` produced. If you want the detail without an exception, call
+Raised by `Verify` / `VerifyAll`. The message is **your** message and a CRLF ( both left out when your message
+is empty ), then `[<T>] has unmet expectations:` naming the mocked type, a CRLF, and the text
+`CheckExpectations` produced, methods in name order, string arguments quoted ( `( '' )` for an empty string ). If you want the detail without an exception, call
 `CheckExpectations` yourself — it returns `''` when everything was satisfied.
 
 ---
@@ -391,7 +426,23 @@ three deletions. **There is no condition under which this is reopened.**
   until a GITLAKRTL `System.Rtti` patch, which Ian decides on ( `Tests\README.md` ).
 - **`Delphi.Mocks.ObjectProxy.pas` frees the wrapped instance unconditionally**, even when the
   caller supplied it. Changing that is an ownership-contract change, so it is left alone on
-  purpose.
+  purpose. **Except a reference-counted instance** ( a `TInterfacedObject` descendant, since 2026-11-21 ): the
+  mock holds an interface reference to it, so the code under test taking and releasing an interface no longer
+  frees it under the mock ( which then freed it again ). When the mock goes, the instance is freed with the
+  mock's reference, or, if the code under test still holds one, handed back to its own class and left to that
+  reference.
+- **A `WillExecute` function that captures its own `TMock` variable makes a reference cycle**: the mock holds
+  the function and the function holds the mock, so neither is ever freed ( FastMM5 reports it ). Capture
+  `mock.Instance` instead, or call `mock.Free` when the test is done with it, which breaks the cycle
+  ( `TReviewTests.WillExecute_Capturing_Its_Mock_Is_Released_By_Free` ).
+- **Threads.** The code under test may call mocks from several threads at once: each call's bookkeeping ( the
+  call log, the expectation counts, the behaviour search ), a setup's completion, `Verify` and interface queries
+  take one lock that all mocks share, so every call is counted. The behaviour itself ( a `WillExecute` function,
+  an exception's constructor, an auto mock ) runs **outside** the lock, so it may wait for another thread that
+  calls a mock. **Matcher predicates run under the lock** ( while the behaviour and expectations are matched ):
+  a `Matches<T>` predicate must not wait for such a thread. A setup belongs to the thread that began it: a call
+  from another thread while it is pending is an ordinary call. Set a mock up on one thread. Measured: the suite,
+  40,000 calls on four threads included, runs in the same time as before the lock ( about 0.5 s ).
 
 ---
 
@@ -477,6 +528,13 @@ diverted Release as well broke package loading** — do not "tidy" it back.
 
 DCUs are `.\$(Platform)\$(Config)`, project-local and split both ways.
 
+### Using it from another project
+
+Either put `Source\` on the project's unit search path and `uses Delphi.Mocks` ( nothing to build or install;
+a library change is picked up by the next build ), or, when several projects share it, build the package in all
+four modes and put `$(BDSCOMMONDIR)\Dcp\$(Platform)` on the search path, or link it as a runtime package. It is
+runtime only, so there is nothing to install into the IDE.
+
 ### The test project
 
 `Tests\Delphi.Mocks.Tests.dproj`, a DUnitX console runner. Output and DCUs both go to
@@ -493,8 +551,9 @@ and a `CheckDUnitX` target runs `BeforeTargets="Build"`, failing with:
 > `DUnitX was not found at '<path>'. Clone https://github.com/ijbranch/gllDUnitX as a sibling of
 > this repository, or set the DUNITX property or environment variable to its Source folder.`
 
-The unit search path is `..\Source;$(DUNITX)` — so the **source** of both the library and DUnitX
-is compiled into the test executable. Building the package is not a prerequisite for running the
+The unit search path is `$(DUNITX)\Gll;..\Source;$(DUNITX)` ( `Gll` holds the fork's suite runner,
+`GllDUnitX.SuiteRunner` ) — relative throughout, so a clone builds where its sibling `gllDUnitX` is. The
+**source** of both the library and DUnitX is compiled into the test executable. Building the package is not a prerequisite for running the
 tests, and a change to `Source\` is picked up by the next test build without any package rebuild.
 
 ---
@@ -605,7 +664,8 @@ is that breakage caught at run time.
 
 Known and deliberate: `Delphi.Mocks.ObjectProxy.pas` frees the wrapped instance unconditionally,
 even when you supplied it through `TMock<T>.Create( ACreateObjectFunc )`. Do not free it yourself
-as well.
+as well. A reference-counted instance ( a `TInterfacedObject` descendant ) is the exception: it is released, not
+freed, so an interface reference you still hold keeps it alive.
 
 ---
 
@@ -616,3 +676,6 @@ no third-party code in `Source\`.
 
 The **test** project needs a sibling `gllDUnitX` checkout — source, not a package. That is the
 only external dependency in the repository, and it is a test-time one.
+
+---
+*Version: 1.0 – 21 November 2026 10:28*

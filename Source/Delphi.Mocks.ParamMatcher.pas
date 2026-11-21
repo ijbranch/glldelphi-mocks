@@ -68,7 +68,11 @@ type
     class var
        /// <summary>Each thread's pending matchers, indexed by parameter.</summary>
        FMatchers : TObjectDictionary<TThreadID,TList<IMatcher>>;
-       /// <summary>Guards FMatchers.</summary>
+       /// <summary>How many setups each thread has pending: begun, their When call not yet arrived.  A table
+       /// under FLock, not a threadvar: a setup can be ended on a thread other than the one that began it ( its
+       /// abandonment reported by a release elsewhere ), and must be taken off its own thread's count.</summary>
+       FPendingSetups : TDictionary<TThreadID,Integer>;
+       /// <summary>Guards FMatchers and FPendingSetups.</summary>
        FLock     : TObject;
   protected
     /// <summary>Creates the per-thread store.</summary>
@@ -78,8 +82,8 @@ type
     /// <summary>Registers a matcher for one parameter of the current thread's pending setup.</summary>
     /// <param name="paramIndex">The zero-based parameter index, Self excluded.</param>
     /// <param name="matcher">The matcher.</param>
-    /// <exception cref="EMockSetupException">The parameter already has a matcher. The pending matchers are
-    /// discarded, so the next setup starts clean.</exception>
+    /// <exception cref="EMockSetupException">The parameter index is negative, or the parameter already has a
+    /// matcher. In the second case the pending matchers are discarded, so the next setup starts clean.</exception>
     class procedure AddMatcher(const paramIndex : integer;  const matcher : IMatcher);
   public
     /// <summary>Registers a predicate as the matcher for one parameter.</summary>
@@ -90,9 +94,25 @@ type
     /// <summary>Takes the current thread's pending matchers, leaving none behind.</summary>
     /// <returns>The matchers by parameter index; an index with no matcher holds nil.</returns>
     class function  GetMatchers : TArray<IMatcher>;
-    /// <summary>Discards the current thread's pending matchers. Called for every ordinary (non-setup) call, so
-    /// an It expression evaluated outside a When cannot attach itself to a later setup.</summary>
-    class procedure ClearMatchers;
+    /// <summary>Discards the current thread's pending matchers ( see ClearMatchersOutsideSetup ).</summary>
+    class procedure ClearMatchers; overload;
+    /// <summary>Discards one thread's pending matchers.  Called when a setup is abandoned ( its When call never
+    /// arrived, or its arguments raised ), with the thread that began it, so the matchers it registered cannot
+    /// attach themselves to that thread's next setup.</summary>
+    /// <param name="AThreadID">The thread whose matchers go.</param>
+    class procedure ClearMatchers(const AThreadID : TThreadID); overload;
+    /// <summary>Discards the current thread's pending matchers unless a setup is pending on it.  Called for every
+    /// ordinary call, so an It expression evaluated outside a When cannot attach itself to a later setup, while a
+    /// call on another mock made after a setup began, as its When arguments are evaluated, leaves that setup's
+    /// matchers alone.  Not cleared when a setup begins instead: on Win32 the arguments passed on the stack are
+    /// evaluated before the Setup chain, so a setup's own matchers can be registered before it begins; a call on
+    /// another mock evaluated before the chain as well still clears them.</summary>
+    class procedure ClearMatchersOutsideSetup;
+    /// <summary>Counts a setup begun on the current thread.</summary>
+    class procedure SetupBegun;
+    /// <summary>Counts a setup completed or abandoned.</summary>
+    /// <param name="AThreadID">The thread that began it, which need not be the current one.</param>
+    class procedure SetupEnded(const AThreadID : TThreadID);
   end;
 
 
@@ -136,6 +156,7 @@ end;
 class constructor TMatcherFactory.Create;
 begin
   FMatchers := TObjectDictionary<TThreadID,TList<IMatcher>>.Create([doOwnsValues]);
+  FPendingSetups := TDictionary<TThreadID,Integer>.Create;
   FLock     := TObject.Create;
 end;
 
@@ -143,6 +164,7 @@ class destructor TMatcherFactory.Destroy;
 begin
   // FMatchers owns its values (doOwnsValues), so freeing them here as well was a double free.
   FMatchers.Free;
+  FPendingSetups.Free;
   FLock.Free;
 end;
 
@@ -165,9 +187,57 @@ end;
 
 class procedure TMatcherFactory.ClearMatchers;
 begin
+  ClearMatchers(TThread.CurrentThread.ThreadID);
+end;
+
+class procedure TMatcherFactory.ClearMatchers(const AThreadID : TThreadID);
+begin
   MonitorEnter(FLock);
   try
-    FMatchers.Remove(TThread.CurrentThread.ThreadID);
+    FMatchers.Remove(AThreadID);
+  finally
+    MonitorExit(FLock);
+  end;
+end;
+
+class procedure TMatcherFactory.ClearMatchersOutsideSetup;
+begin
+  MonitorEnter(FLock);
+  try
+    if not FPendingSetups.ContainsKey(TThread.CurrentThread.ThreadID) then
+      FMatchers.Remove(TThread.CurrentThread.ThreadID);
+  finally
+    MonitorExit(FLock);
+  end;
+end;
+
+class procedure TMatcherFactory.SetupBegun;
+var
+  count : Integer;
+begin
+  MonitorEnter(FLock);
+  try
+    if not FPendingSetups.TryGetValue(TThread.CurrentThread.ThreadID, count) then
+      count := 0;
+    FPendingSetups.AddOrSetValue(TThread.CurrentThread.ThreadID, count + 1);
+  finally
+    MonitorExit(FLock);
+  end;
+end;
+
+class procedure TMatcherFactory.SetupEnded(const AThreadID : TThreadID);
+var
+  count : Integer;
+begin
+  MonitorEnter(FLock);
+  try
+    if FPendingSetups.TryGetValue(AThreadID, count) then
+    begin
+      if count > 1 then
+        FPendingSetups[AThreadID] := count - 1
+      else
+        FPendingSetups.Remove(AThreadID);
+    end;
   finally
     MonitorExit(FLock);
   end;
@@ -177,6 +247,11 @@ class procedure TMatcherFactory.AddMatcher(const paramIndex : integer; const mat
 var
   threadMatchers : TList<IMatcher>;
 begin
+  //It(-1): raised EArgumentOutOfRangeException from deep inside the list, naming nothing the caller wrote
+  if paramIndex < 0 then
+    raise EMockSetupException.CreateFmt('It(%d) is not a parameter: use It0 for the first parameter, It1 for the '
+      + 'second and so on.', [paramIndex]);
+
   MonitorEnter(FLock);
   try
     if not FMatchers.TryGetValue(TThread.CurrentThread.ThreadID,threadMatchers) then

@@ -120,7 +120,34 @@ type
 implementation
 
 uses
+  System.TypInfo,
   Delphi.Mocks.Helpers;
+
+/// <summary>Creates an exception of a class through that class's own Create(string) constructor.</summary>
+/// <remarks>Exception.Create is not virtual, so AClass.Create(AMessage) always ran Exception.Create and never the
+/// constructor a descendant declares, which may set fields its handlers read.  The most derived public
+/// Create(string) is found by RTTI; a class without one gets Exception.Create, as before.</remarks>
+/// <param name="AClass">The exception class.</param>
+/// <param name="AMessage">The message.</param>
+/// <returns>The new exception.</returns>
+function CreateException(const AClass : ExceptClass; const AMessage : string) : Exception;
+var
+  lContext : TRttiContext;
+  lType : TRttiType;
+  lParams : TArray<TRttiParameter>;
+begin
+  lType := lContext.GetType(AClass);
+  if lType <> nil then
+    for var lMethod in lType.GetMethods('Create') do
+    begin
+      if not lMethod.IsConstructor then
+        Continue;
+      lParams := lMethod.GetParameters;
+      if (Length(lParams) = 1) and (lParams[0].ParamType <> nil) and (lParams[0].ParamType.Handle = TypeInfo(string)) then
+        Exit(lMethod.Invoke(TClass(AClass), [AMessage]).AsObject as Exception);
+    end;
+  Result := AClass.Create(AMessage);
+end;
 
 { TBehavior }
 
@@ -200,7 +227,7 @@ begin
            msg := FExceptionMessage
          else
            msg := 'raised by mock';
-         raise FExceptClass.Create(msg);
+         raise CreateException(FExceptClass, msg);
        end;
     end;
     WillExecute,WillExecuteWhen:
@@ -226,7 +253,8 @@ begin
   //start at 1 as we don't care about matching the first arg (self)
   for i := 1 to Length(args) -1 do
   begin
-    if not FArgs[i -1].Equals(args[i]) then
+    //The type as well as the value: an overload with an argument of the same ordinal value is another method.
+    if not (SameArgType(FArgs[i -1], args[i]) and FArgs[i -1].Equals(args[i])) then
       exit;
   end;
   result := True;

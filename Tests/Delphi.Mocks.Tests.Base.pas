@@ -208,6 +208,8 @@ begin
   end;
 
   Assert.IsFalse(exceptionRaised, exceptionMsg);
+  //A usable mock, not one built around a missing instance
+  Assert.IsNotNull(mock.Instance, 'The mock has no instance');
 end;
 
 procedure TTestMock.CreateMock_With_Interface_We_Get_Valid_Proxy;
@@ -217,6 +219,12 @@ begin
   mock := TMock<ISimpleTestInterface_WithRTTI>.Create;
 
   Assert.IsNotNull(mock.Instance);
+
+  //The instance is the mock's: a call on it is counted, and an expectation it does not meet fails Verify
+  mock.Setup.Expect.Once.When.Dud;
+  Assert.WillRaise(procedure begin mock.Verify end, EMockVerificationException, 'An unmet expectation passed');
+  mock.Instance.Dud;
+  Assert.WillNotRaiseAny(procedure begin mock.Verify end, 'The call did not reach the mock');
 end;
 
 procedure TTestMock.CreateMock_With_Interfaces_We_Can_Query_All_Interfaces_From_Mock;
@@ -243,6 +251,15 @@ begin
   Assert.IsNotNull(IntfTwo);
   Assert.IsNotNull(IntfThree);
   Assert.IsNotNull(Intf);
+
+  //Each queried interface is the mock's own: a call through it reaches that interface's setup
+  mock.Setup.Expect.Once.When.Method;
+  mock.Setup<IInterfaceTwo>.Expect.Once.When.MethodTwo;
+  mock.Setup<IInterfaceThree>.Expect.Once.When.MethodThree;
+  IntfOne.Method;
+  IntfTwo.MethodTwo;
+  IntfThree.MethodThree;
+  Assert.WillNotRaiseAny(procedure begin mock.VerifyAll end, 'A call through a queried interface was not counted');
 end;
 
 procedure TTestMock.CreateMock_With_Interfaces_We_Can_Query_All_Interfaces_From_Interface;

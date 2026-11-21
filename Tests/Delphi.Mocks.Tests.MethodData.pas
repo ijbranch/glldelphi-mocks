@@ -108,6 +108,8 @@ var
   someParam,
   someValue1,
   someValue2  : TValue;
+  outValue    : TValue;
+  report      : string;
   LObjectToTest : TObjectToTest;
   LAnotherObject: TAnotherObject;
   LAndAnotherObject: TAndAnotherObject;
@@ -133,6 +135,11 @@ begin
         result := true;
       end)]);
     end);
+
+    //Both were kept: a call only the first matcher accepts breaks the first Never.  Had the second replaced the
+    //first, nothing would count the call.
+    methodData.RecordHit([nil, someValue1], nil, nil, outValue);
+    Assert.IsFalse(methodData.Verify(report), 'The first Never When was replaced by the second');
   finally
     //methodData keeps the matcher closures, which share this frame and so hold methodData: a cycle, broken here
     methodData := nil;
@@ -242,6 +249,8 @@ var
   someParam,
   someValue1,
   someValue2  : TValue;
+  outValue    : TValue;
+  objectType  : TRttiType;
   LObjectToTest : TObjectToTest;
   LAnotherObject: TAnotherObject;
   LAndAnotherObject: TAndAnotherObject;
@@ -254,7 +263,8 @@ begin
     someValue2 := TValue.From<TAndAnotherObject>(LAndAnotherObject);
     someParam := TValue.From<TObjectToTest>(LObjectToTest);
 
-    methodData := TMethodData.Create('x', 'x', TSetupMethodDataParameters.Create(FALSE, FALSE, FALSE));
+    //AllowRedefineBehaviorDefinitions True, as the name says: it was False, which proved nothing about the setting
+    methodData := TMethodData.Create('x', 'x', TSetupMethodDataParameters.Create(FALSE, FALSE, TRUE));
     methodData.WillReturnWhen([nil, someParam], someValue1, [TMatcher<TAnotherObject>.Create(function(value : TAnotherObject) : boolean
     begin
       result := true;
@@ -267,6 +277,13 @@ begin
         result := true;
       end)]);
     end);
+
+    //Different matchers are different definitions, so the second did not replace the first: each answers its own
+    objectType := TRttiContext.Create.GetType(TypeInfo(TObjectToTest));
+    methodData.RecordHit([nil, someValue1], objectType, nil, outValue);
+    Assert.AreSame(LAnotherObject, outValue.AsObject, 'The first behaviour was replaced');
+    methodData.RecordHit([nil, someValue2], objectType, nil, outValue);
+    Assert.AreSame(LAndAnotherObject, outValue.AsObject, 'The second behaviour does not answer');
   finally
     //methodData keeps the matcher closures, which share this frame and so hold methodData: a cycle, broken here
     methodData := nil;
@@ -305,6 +322,7 @@ begin
     someValue : TValue;
   begin
     methodData.RecordHit(TArray<TValue>.Create(), nil, nil, someValue);
+    Assert.IsTrue(someValue.IsEmpty, 'A call with nothing defined produced a value');
   end);
 end;
 
@@ -314,12 +332,13 @@ var
 begin
   methodData := TMethodData.Create('x', 'x', TSetupMethodDataParameters.Create(FALSE, TRUE, FALSE));
 
-  Assert.WillRaise(procedure
+  //The message as well as the class: EMockException is the base of every mock exception, so any would have passed
+  Assert.WillRaiseWithMessage(procedure
   var
     someValue : TValue;
   begin
     methodData.RecordHit(TArray<TValue>.Create(), nil, nil, someValue);
-  end, EMockException);
+  end, EMockException, '[x] has no behaviour or expectation defined for method [x]');
 end;
 
 

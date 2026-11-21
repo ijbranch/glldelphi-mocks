@@ -91,7 +91,9 @@ type
   private const
     /// <summary>The message raised when a setup's When call never reached the proxy.</summary>
     SETUP_ABANDONED_MESSAGE = 'Setup called on non-virtual method: the method named after When never reached the '
-      + 'mock, because it is not virtual or the mock answers it itself (QueryInterface, _AddRef, _Release)';
+      + 'mock, because it is not virtual, the mock answers it itself (QueryInterface, _AddRef, _Release), or, on a '
+      + 'class mock, it is a method TObject declares and the class does not override (ToString, Equals, '
+      + 'GetHashCode and the rest) or a construction or destruction method';
   private
     //Implements members.
     //Can't define TProxy<T> or any other generic type as that type will be defined at runtime.
@@ -147,6 +149,10 @@ type
     /// <summary>The exception being handled when the pending setup began ( nil outside a handler ).  An abandoned
     /// setup is not reported while a DIFFERENT exception propagates, which already reports the failed setup.</summary>
     FSetupExceptObject      : TObject;
+    /// <summary>The thread the pending setup was begun on.  Only a call from that thread completes it: a call
+    /// from another thread while it is pending is an ordinary call, and was taken as the setup's When call.
+    /// </summary>
+    FSetupThreadID          : TThreadID;
 
     /// <summary>Guards QueryInterface against re-entry.</summary>
     FQueryingInterface      : boolean;
@@ -161,7 +167,29 @@ type
     /// <summary>Puts the proxy into setup mode, so the next call through When defines a behaviour or expectation.
     /// </summary>
     /// <param name="AMode">The kind of setup.</param>
+    /// <exception cref="EMockSetupException">A setup begun earlier is still pending.</exception>
     procedure BeginSetup(const AMode : TSetupMode);
+    /// <summary>Reports a setup begun earlier and still pending, whose When call never reached the proxy.</summary>
+    /// <exception cref="EMockSetupException">A setup is pending; it is discarded.</exception>
+    procedure CheckNoPendingSetup;
+    /// <summary>Refuses a method name the mocked type does not have: an expectation on a misspelt or renamed
+    /// method could never fail.</summary>
+    /// <param name="AMethodName">The name; compared without regard to case.</param>
+    /// <exception cref="EMockSetupException">T has no method of that name; or the mocked type has no method named
+    /// AMethodName, or a When setup is pending.</exception>
+    procedure CheckMethodName(const AMethodName : string);
+    /// <summary>Returns the data of a method named in a setup by its name, after checking the name and that no
+    /// When setup is pending.</summary>
+    /// <param name="AMethodName">The name.</param>
+    /// <returns>The method's data.</returns>
+    /// <exception cref="EMockSetupException">T has no method of that name, or a When setup is pending; or the mocked
+    /// type has no method named AMethodName, or a When setup is pending.</exception>
+    function NamedMethodData(const AMethodName : string) : IMethodData;
+    /// <summary>Hands the current settings to every method already used, so a setting changed later applies to
+    /// them too.</summary>
+    procedure ApplySettings;
+    /// <summary>Discards the pending setup and the matchers its thread registered for it.</summary>
+    procedure AbandonSetup;
     /// <summary>Checks the matchers a When call registered.</summary>
     /// <param name="matchers">The matchers, by parameter index.</param>
     /// <param name="Args">The When call's arguments; Args[0] is Self.</param>
@@ -195,6 +223,8 @@ type
       /// <summary>Makes every later call raise EMockException, because the owning proxy is being destroyed.
       /// </summary>
       /// <param name="ATypeName">The mocked type's name, for the message.</param>
+      /// <exception cref="EMockException">Not from Orphan itself: raised by every call on the instance afterwards.
+      /// </exception>
       procedure Orphan(const ATypeName : string);
     public
       //TVirtualInterface overrides
@@ -215,6 +245,10 @@ type
     FSetupMode              : TSetupMode;
     /// <summary>Whether the proxy belongs to a stub.</summary>
     FIsStubOnly             : boolean;
+
+    /// <summary>Whether a call on the current thread completes a pending setup.</summary>
+    /// <returns>True when a setup is pending and was begun on this thread.</returns>
+    function SetupPendingHere : Boolean;
 
     /// <summary>Records the proxy this one was added to by Implement.</summary>
     /// <param name="AProxy">The parent proxy.</param>
@@ -269,7 +303,11 @@ type
     /// <returns>The setup interface.</returns>
     function StubSetup : IStubSetup<T>;
 
+    /// <summary>Maps IProxy&lt;T&gt;.Setup to MockSetup.</summary>
+    /// <returns>The mock setup interface.</returns>
     function IProxy<T>.Setup = MockSetup;
+    /// <summary>Maps IStubProxy&lt;T&gt;.Setup to StubSetup.</summary>
+    /// <returns>The stub setup interface.</returns>
     function IStubProxy<T>.Setup = StubSetup;
 
     /// <summary>Returns the mocked instance.</summary>
@@ -307,8 +345,8 @@ type
     /// <summary>Sets the value a method returns when no other behaviour applies.</summary>
     /// <param name="AMethodName">The method.</param>
     /// <param name="value">The default value.</param>
-    /// <exception cref="EMockSetupException">A default is already defined and redefinition is not allowed.
-    /// </exception>
+    /// <exception cref="EMockSetupException">A default is already defined and redefinition is not allowed, T has
+    /// no method named AMethodName, or a When setup is pending.</exception>
     procedure WillReturnDefault(const AMethodName : string; const value : TValue);
     /// <summary>Begins a setup that returns nil.</summary>
     /// <returns>The When step.</returns>
@@ -317,18 +355,22 @@ type
     /// <param name="exceptionClass">The exception class to raise.</param>
     /// <param name="message">The exception message.</param>
     /// <returns>The When step.</returns>
+    /// <exception cref="EMockSetupException">exceptionClass is nil, or a setup is pending.</exception>
     function WillRaise(const exceptionClass : ExceptClass; const message : string = '') : IWhen<T>; overload;
     /// <summary>Makes a method always raise.</summary>
     /// <param name="AMethodName">The method.</param>
     /// <param name="exceptionClass">The exception class to raise.</param>
     /// <param name="message">The exception message.</param>
-    /// <exception cref="EMockSetupException">The behaviour is already defined.</exception>
+    /// <exception cref="EMockSetupException">The behaviour is already defined, exceptionClass is nil, T has no
+    /// method named AMethodName, or a When setup is pending; or the mocked type has no method named AMethodName, or
+    /// a When setup is pending.</exception>
     procedure WillRaise(const AMethodName : string; const exceptionClass : ExceptClass; const message : string = ''); overload;
 
     /// <summary>Begins a setup that raises for particular arguments.</summary>
     /// <param name="exceptionClass">The exception class to raise.</param>
     /// <param name="message">The exception message.</param>
     /// <returns>The When step.</returns>
+    /// <exception cref="EMockSetupException">exceptionClass is nil, or a setup is pending.</exception>
     function WillRaiseWhen(const exceptionClass : ExceptClass; const message : string = '') : IWhen<T>;
 
     /// <summary>Begins a setup that runs a function for particular arguments.</summary>
@@ -338,7 +380,8 @@ type
     /// <summary>Makes a method always run a function.</summary>
     /// <param name="AMethodName">The method.</param>
     /// <param name="func">The function to run.</param>
-    /// <exception cref="EMockSetupException">The behaviour is already defined.</exception>
+    /// <exception cref="EMockSetupException">The behaviour is already defined; or the mocked type has no method
+    /// named AMethodName, or a When setup is pending.</exception>
     procedure WillExecute(const AMethodName : string; const func : TExecuteFunc); overload;
 
     /// <summary>Handles every call on the mocked instance: records it, or completes the pending setup.</summary>
@@ -371,6 +414,8 @@ type
     /// <param name="AMethodName">The method.</param>
     /// <param name="ATypeName">The mocked type's name, for messages.</param>
     /// <returns>The method's data; never nil.</returns>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     function GetMethodData(const AMethodName : string; const ATypeName: string) : IMethodData; overload;
 
     /// <summary>Ends the pending setup.</summary>
@@ -382,6 +427,8 @@ type
     function Once : IWhen<T>;overload;
     /// <summary>Expects exactly one call.</summary>
     /// <param name="AMethodName">The method.</param>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure Once(const AMethodName : string);overload;
 
     /// <summary>Begins an expectation of no call with particular arguments.</summary>
@@ -389,6 +436,8 @@ type
     function Never : IWhen<T>;overload;
     /// <summary>Expects no call.</summary>
     /// <param name="AMethodName">The method.</param>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure Never(const AMethodName : string);overload;
 
     /// <summary>Begins an expectation of one or more calls with particular arguments.</summary>
@@ -396,6 +445,8 @@ type
     function AtLeastOnce : IWhen<T>;overload;
     /// <summary>Expects one or more calls.</summary>
     /// <param name="AMethodName">The method.</param>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure AtLeastOnce(const AMethodName : string);overload;
 
     /// <summary>Begins an expectation of a minimum number of calls with particular arguments.</summary>
@@ -405,6 +456,8 @@ type
     /// <summary>Expects a minimum number of calls.</summary>
     /// <param name="AMethodName">The method.</param>
     /// <param name="times">The minimum.</param>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure AtLeast(const AMethodName : string; const times : Cardinal);overload;
 
     /// <summary>Begins an expectation of a maximum number of calls with particular arguments.</summary>
@@ -414,6 +467,8 @@ type
     /// <summary>Expects a maximum number of calls.</summary>
     /// <param name="AMethodName">The method.</param>
     /// <param name="times">The maximum.</param>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure AtMost(const AMethodName : string; const times : Cardinal);overload;
 
     /// <summary>Begins an expectation of an inclusive range of calls with particular arguments.</summary>
@@ -425,7 +480,8 @@ type
     /// <param name="AMethodName">The method.</param>
     /// <param name="a">The minimum.</param>
     /// <param name="b">The maximum.</param>
-    /// <exception cref="EMockSetupException">b is less than a.</exception>
+    /// <exception cref="EMockSetupException">b is less than a; or the mocked type has no method named AMethodName,
+    /// or a When setup is pending.</exception>
     procedure Between(const AMethodName : string; const a, b : Cardinal);overload;
 
     /// <summary>Begins an expectation of an exact number of calls with particular arguments.</summary>
@@ -435,26 +491,36 @@ type
     /// <summary>Expects an exact number of calls.</summary>
     /// <param name="AMethodName">The method.</param>
     /// <param name="times">The number of calls.</param>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure Exactly(const AMethodName : string; const times : Cardinal);overload;
 
     /// <summary>Begins an expectation that the When method is first called before the first call of another.
     /// </summary>
     /// <param name="AMethodName">The method the When method must precede.</param>
     /// <returns>The When step.</returns>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     function Before(const AMethodName : string) : IWhen<T>;overload;
     /// <summary>Expects one method first called before the first call of another.</summary>
     /// <param name="AMethodName">The method that must come first.</param>
     /// <param name="ABeforeMethodName">The method it must precede.</param>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure Before(const AMethodName : string; const ABeforeMethodName : string);overload;
 
     /// <summary>Begins an expectation that the When method is first called after the first call of another.
     /// </summary>
     /// <param name="AMethodName">The method the When method must follow.</param>
     /// <returns>The When step.</returns>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     function After(const AMethodName : string) : IWhen<T>;overload;
     /// <summary>Expects one method first called after the first call of another.</summary>
     /// <param name="AMethodName">The method that must come later.</param>
     /// <param name="AAfterMethodName">The method it must follow.</param>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure After(const AMethodName : string; const AAfterMethodName : string);overload;
 
     /// <summary>Removes every expectation, here and in every interface the proxy implements.</summary>
@@ -490,6 +556,7 @@ function MethodKindToStr(const AMethodKind : TMethodKind) : string;
 implementation
 
 uses
+  System.Classes,
   Delphi.Mocks.Utils,
   Delphi.Mocks.When,
   Delphi.Mocks.MethodData;
@@ -540,16 +607,15 @@ begin
 end;
 
 procedure TProxy<T>.After(const AMethodName, AAfterMethodName: string);
-var
-  pInfo : PTypeInfo;
 begin
-  pInfo := TypeInfo(T);
-  GetMethodData(AMethodName, pInfo.NameStr).After(AAfterMethodName);
+  CheckMethodName(AAfterMethodName);
+  NamedMethodData(AMethodName).After(AAfterMethodName);
   ClearSetupState;
 end;
 
 function TProxy<T>.After(const AMethodName: string): IWhen<T>;
 begin
+  CheckMethodName(AMethodName);
   BeginSetup(TSetupMode.Expectation);
   FNextExpectation := TExpectationType.AfterWhen;
   FBeforeAfterMethodName := AMethodName;
@@ -559,10 +625,8 @@ end;
 procedure TProxy<T>.AtLeast(const AMethodName: string; const times: Cardinal);
 var
   methodData : IMethodData;
-  pInfo : PTypeInfo;
 begin
-  pInfo := TypeInfo(T);
-  methodData := GetMethodData(AMethodName, pInfo.NameStr);
+  methodData := NamedMethodData(AMethodName);
   methodData.AtLeast(times);
   ClearSetupState;
 end;
@@ -578,10 +642,8 @@ end;
 procedure TProxy<T>.AtLeastOnce(const AMethodName: string);
 var
   methodData : IMethodData;
-  pInfo : PTypeInfo;
 begin
-  pInfo := TypeInfo(T);
-  methodData := GetMethodData(AMethodName, pInfo.NameStr);
+  methodData := NamedMethodData(AMethodName);
   methodData.AtLeastOnce;
   ClearSetupState;
 end;
@@ -597,10 +659,8 @@ end;
 procedure TProxy<T>.AtMost(const AMethodName: string; const times: Cardinal);
 var
   methodData : IMethodData;
-  pInfo : PTypeInfo;
 begin
-  pInfo := TypeInfo(T);
-  methodData := GetMethodData(AMethodName, pInfo.NameStr);
+  methodData := NamedMethodData(AMethodName);
   methodData.AtMost(times);
   ClearSetupState;
 end;
@@ -614,33 +674,90 @@ begin
 end;
 
 procedure TProxy<T>.Before(const AMethodName, ABeforeMethodName: string);
-var
-  pInfo : PTypeInfo;
 begin
-  pInfo := TypeInfo(T);
-  GetMethodData(AMethodName, pInfo.NameStr).Before(ABeforeMethodName);
+  CheckMethodName(ABeforeMethodName);
+  NamedMethodData(AMethodName).Before(ABeforeMethodName);
   ClearSetupState;
 end;
 
 function TProxy<T>.Before(const AMethodName: string): IWhen<T>;
 begin
+  CheckMethodName(AMethodName);
   BeginSetup(TSetupMode.Expectation);
   FNextExpectation := TExpectationType.BeforeWhen;
   FBeforeAfterMethodName := AMethodName;
   result := TWhen<T>.Create(Self.Proxy);
 end;
 
-procedure TProxy<T>.BeginSetup(const AMode: TSetupMode);
+procedure TProxy<T>.CheckNoPendingSetup;
 begin
   //A setup still pending was abandoned and not yet reported: its Setup reference is held in a variable, so the
   //release that reports it has not come.  Reported here rather than silently replaced.
   if FSetupMode <> TSetupMode.None then
   begin
-    ClearSetupState;
+    //Its matchers too, or they would attach themselves to the next setup
+    AbandonSetup;
     FSetupEntryRefCount := -1;
     raise EMockSetupException.Create(SETUP_ABANDONED_MESSAGE);
   end;
+end;
 
+procedure TProxy<T>.CheckMethodName(const AMethodName: string);
+var
+  lContext : TRttiContext;
+  lType : TRttiType;
+begin
+  lType := lContext.GetType(TypeInfo(T));
+  if lType = nil then
+    Exit;
+  for var lMethod in lType.GetMethods do
+    if SameText(lMethod.Name, AMethodName) then
+      Exit;
+  raise EMockSetupException.CreateFmt('[%s] has no method named [%s]', [FName, AMethodName]);
+end;
+
+function TProxy<T>.NamedMethodData(const AMethodName: string): IMethodData;
+begin
+  CheckNoPendingSetup;
+  CheckMethodName(AMethodName);
+  Result := GetMethodData(AMethodName, FName);
+end;
+
+procedure TProxy<T>.ApplySettings;
+begin
+  EnterMockLock;
+  try
+    for var lMethodData in FMethodData.Values do
+      lMethodData.UpdateSettings(FBehaviorMustBeDefined, FAllowRedefineBehaviorDefinitions);
+  finally
+    LeaveMockLock;
+  end;
+end;
+
+function TProxy<T>.SetupPendingHere: Boolean;
+begin
+  Result := (FSetupMode <> TSetupMode.None) and (FSetupThreadID = TThread.CurrentThread.ThreadID);
+end;
+
+procedure TProxy<T>.AbandonSetup;
+var
+  threadID : TThreadID;
+begin
+  threadID := FSetupThreadID;
+  ClearSetupState;
+  TMatcherFactory.ClearMatchers(threadID);
+end;
+
+procedure TProxy<T>.BeginSetup(const AMode: TSetupMode);
+begin
+  CheckNoPendingSetup;
+
+  //Not a place to clear pending matchers: on Win32 the When arguments passed on the stack are evaluated before
+  //the Setup chain, so this setup's own matchers may already be registered.  Counted instead, so an ordinary call
+  //made while the When arguments are evaluated leaves them alone.
+  TMatcherFactory.SetupBegun;
+
+  FSetupThreadID := TThread.CurrentThread.ThreadID;
   FSetupMode := AMode;
   FSetupExceptObject := System.ExceptObject;
   //The count before Setup's own reference when the statement began with Setup, else ( Setup<I> reaches the proxy
@@ -674,10 +791,8 @@ end;
 procedure TProxy<T>.Between(const AMethodName: string; const a, b: Cardinal);
 var
   methodData : IMethodData;
-  pInfo : PTypeInfo;
 begin
-  pInfo := TypeInfo(T);
-  methodData := GetMethodData(AMethodName, pInfo.NameStr);
+  methodData := NamedMethodData(AMethodName);
   methodData.Between(a, b);
   ClearSetupState;
 end;
@@ -696,17 +811,28 @@ function TProxy<T>.CheckExpectations: string;
 var
   methodData : IMethodData;
   report : string;
+  names : TArray<string>;
 begin
   Result := '';
-  for methodData in FMethodData.Values do
-  begin
-    report := '';
-    if not methodData.Verify(report) then
+  EnterMockLock;
+  try
+    //In name order: the dictionary's own order changed from run to run, so two reports of the same failures
+    //differed.
+    names := FMethodData.Keys.ToArray;
+    TArray.Sort<string>(names);
+    for var name in names do
     begin
-      if Result <> '' then
-        Result := Result + #13#10;
-      Result := Result + report ;
+      methodData := FMethodData[name];
+      report := '';
+      if not methodData.Verify(report) then
+      begin
+        if Result <> '' then
+          Result := Result + #13#10;
+        Result := Result + report ;
+      end;
     end;
+  finally
+    LeaveMockLock;
   end;
 end;
 
@@ -721,9 +847,12 @@ var
   proxy : IProxy;
   interfaceV : IVerify;
 begin
-  for methodData in FMethodData.Values do
-  begin
-    methodData.ClearExpectations;
+  EnterMockLock;
+  try
+    for methodData in FMethodData.Values do
+      methodData.ClearExpectations;
+  finally
+    LeaveMockLock;
   end;
 
   //Implemented interfaces too, as VerifyAll checks them.
@@ -734,6 +863,9 @@ end;
 
 procedure TProxy<T>.ClearSetupState;
 begin
+  //Taken off the count of the thread that began it, which may not be this one
+  if FSetupMode <> TSetupMode.None then
+    TMatcherFactory.SetupEnded(FSetupThreadID);
   FSetupMode := TSetupMode.None;
   FReturnValue := TValue.Empty;
   FReturnValueNilAllowed := False;
@@ -812,104 +944,113 @@ var
 begin
   pInfo := TypeInfo(T);
 
-  case FSetupMode of
-    TSetupMode.None:
-    begin
-      //An ordinary call has no use for matchers. Any pending here came from an It expression
-      //evaluated outside a When, and would otherwise attach themselves to the next setup.
-      TMatcherFactory.ClearMatchers;
+  //An ordinary call: any call when no setup is pending, or one from a thread other than the setup's.  Not under
+  //the shared lock as a whole: RecordHit takes it for the bookkeeping only, and runs the behaviour ( a WillExecute
+  //function, an exception's constructor, an auto mock ) outside it, so user code that waits on another thread
+  //calling a mock cannot deadlock.
+  if not SetupPendingHere then
+  begin
+    //Pending matchers are discarded only while no setup is pending on this thread: this may be a call on
+    //another mock made as a When's arguments are evaluated, and clearing them then lost the matchers given.
+    TMatcherFactory.ClearMatchersOutsideSetup;
 
-      //record actual behavior
-      methodData := GetMethodData(method.Name, pInfo.NameStr);
-      methodData.RecordHit(Args, Method.ReturnType, Method, Result);
-    end;
-    TSetupMode.Behavior:
-    begin
-      try
-        matchers := TMatcherFactory.GetMatchers;
-        CheckMatchers(matchers, Args, Method);
-        //record desired behavior
-        //first see if we know about this method
-        methodData := GetMethodData(method.Name, pInfo.NameStr);
-        case FNextBehavior of
-          TBehaviorType.WillReturn:
-          begin
-            case Method.MethodKind of
-              mkProcedure,
-              mkDestructor,
-              mkClassProcedure,
-              mkClassDestructor,
-              mkSafeProcedure : raise EMockSetupException.CreateFmt('Setup.WillReturn called on [%s] method [%s] which does '
-                + 'not have a return value.', [MethodKindToStr(Method.MethodKind), Method.Name]);
-
-              //Method kinds which have a return value.
-              mkFunction, mkConstructor, mkClassFunction,
-              mkClassConstructor, mkOperatorOverload, mkSafeFunction: ;
-            end;
-
-            //We don't test for the return type being valid as XE5 and below have a RTTI bug which does not return
-            //a return type for function which reference their own class/interface. Even when RTTI is specified on
-            //the declaration and forward declaration.
-            if (FReturnValue.IsEmpty and not FReturnValueNilAllowed) or
-              (FReturnValueNilAllowed and ((FReturnValue.TypeInfo = nil) or (FReturnValue.TypeData = nil))) then
-              raise EMockSetupException.CreateFmt('Setup.WillReturn call on method [%s] was not passed a return value.', [Method.Name]);
-
-            methodData.WillReturnWhen(Args, FReturnValue, matchers);
-          end;
-          TBehaviorType.WillRaise:
-          begin
-            methodData.WillRaiseWhen(FExceptClass, FExceptionMessage, Args, matchers);
-          end;
-          TBehaviorType.WillRaiseAlways:
-          begin
-            methodData.WillRaiseAlways(FExceptClass, FExceptionMessage);
-          end;
-          TBehaviorType.WillExecuteWhen :
-          begin
-            methodData.WillExecuteWhen(FNextFunc, Args, matchers);
-          end;
-        end;
-      finally
-        ClearSetupState;
-      end;
-    end;
-    TSetupMode.Expectation:
-    begin
-      try
-        matchers := TMatcherFactory.GetMatchers;
-        CheckMatchers(matchers, Args, Method);
-        //record expectations
-        //first see if we know about this method
-        methodData := GetMethodData(method.Name, pInfo.NameStr);
-
-        case FNextExpectation of
-          OnceWhen        : methodData.OnceWhen(Args, matchers);
-          NeverWhen       : methodData.NeverWhen(Args, matchers) ;
-          AtLeastOnceWhen : methodData.AtLeastOnceWhen(Args, matchers);
-          AtLeastWhen     : methodData.AtLeastWhen(FTimes, args, matchers);
-          AtMostOnceWhen  : methodData.AtMostWhen(1, Args, matchers);
-          AtMostWhen      : methodData.AtMostWhen(FTimes, args, matchers);
-          BetweenWhen     : methodData.BetweenWhen(FBetween[0], FBetween[1], Args, matchers);
-          ExactlyWhen     : methodData.ExactlyWhen(FTimes, Args, matchers);
-          BeforeWhen      : methodData.BeforeWhen(FBeforeAfterMethodName, Args, matchers);
-          AfterWhen       : methodData.AfterWhen(FBeforeAfterMethodName, Args, matchers);
-        end;
-
-      finally
-        ClearSetupState;
-      end;
-    end;
+    //record actual behavior
+    methodData := GetMethodData(method.Name, pInfo.NameStr);
+    methodData.RecordHit(Args, Method.ReturnType, Method, Result);
+    Exit;
   end;
 
+  //Completing a setup: under the shared lock, so it is recorded whole
+  EnterMockLock;
+  try
+    case FSetupMode of
+      TSetupMode.Behavior:
+      begin
+        try
+          matchers := TMatcherFactory.GetMatchers;
+          CheckMatchers(matchers, Args, Method);
+          //record desired behavior
+          //first see if we know about this method
+          methodData := GetMethodData(method.Name, pInfo.NameStr);
+          case FNextBehavior of
+            TBehaviorType.WillReturn:
+            begin
+              case Method.MethodKind of
+                mkProcedure,
+                mkDestructor,
+                mkClassProcedure,
+                mkClassDestructor,
+                mkSafeProcedure : raise EMockSetupException.CreateFmt('Setup.WillReturn called on [%s] method [%s] which does '
+                  + 'not have a return value.', [MethodKindToStr(Method.MethodKind), Method.Name]);
+
+                //Method kinds which have a return value.
+                mkFunction, mkConstructor, mkClassFunction,
+                mkClassConstructor, mkOperatorOverload, mkSafeFunction: ;
+              end;
+
+              //We don't test for the return type being valid as XE5 and below have a RTTI bug which does not return
+              //a return type for function which reference their own class/interface. Even when RTTI is specified on
+              //the declaration and forward declaration.
+              if (FReturnValue.IsEmpty and not FReturnValueNilAllowed) or
+                (FReturnValueNilAllowed and ((FReturnValue.TypeInfo = nil) or (FReturnValue.TypeData = nil))) then
+                raise EMockSetupException.CreateFmt('Setup.WillReturn call on method [%s] was not passed a return value.', [Method.Name]);
+
+              methodData.WillReturnWhen(Args, FReturnValue, matchers);
+            end;
+            TBehaviorType.WillRaise:
+            begin
+              methodData.WillRaiseWhen(FExceptClass, FExceptionMessage, Args, matchers);
+            end;
+            TBehaviorType.WillRaiseAlways:
+            begin
+              methodData.WillRaiseAlways(FExceptClass, FExceptionMessage);
+            end;
+            TBehaviorType.WillExecuteWhen :
+            begin
+              methodData.WillExecuteWhen(FNextFunc, Args, matchers);
+            end;
+          end;
+        finally
+          ClearSetupState;
+        end;
+      end;
+      TSetupMode.Expectation:
+      begin
+        try
+          matchers := TMatcherFactory.GetMatchers;
+          CheckMatchers(matchers, Args, Method);
+          //record expectations
+          //first see if we know about this method
+          methodData := GetMethodData(method.Name, pInfo.NameStr);
+
+          case FNextExpectation of
+            OnceWhen        : methodData.OnceWhen(Args, matchers);
+            NeverWhen       : methodData.NeverWhen(Args, matchers) ;
+            AtLeastOnceWhen : methodData.AtLeastOnceWhen(Args, matchers);
+            AtLeastWhen     : methodData.AtLeastWhen(FTimes, args, matchers);
+            AtMostOnceWhen  : methodData.AtMostWhen(1, Args, matchers);
+            AtMostWhen      : methodData.AtMostWhen(FTimes, args, matchers);
+            BetweenWhen     : methodData.BetweenWhen(FBetween[0], FBetween[1], Args, matchers);
+            ExactlyWhen     : methodData.ExactlyWhen(FTimes, Args, matchers);
+            BeforeWhen      : methodData.BeforeWhen(FBeforeAfterMethodName, Args, matchers);
+            AfterWhen       : methodData.AfterWhen(FBeforeAfterMethodName, Args, matchers);
+          end;
+
+        finally
+          ClearSetupState;
+        end;
+      end;
+    end;
+  finally
+    LeaveMockLock;
+  end;
 end;
 
 procedure TProxy<T>.Exactly(const AMethodName: string; const times: Cardinal);
 var
   methodData : IMethodData;
-  pInfo : PTypeInfo;
 begin
-  pInfo := TypeInfo(T);
-  methodData := GetMethodData(AMethodName, pInfo.NameStr);
+  methodData := NamedMethodData(AMethodName);
   methodData.Exactly(times);
   ClearSetupState;
 end;
@@ -943,12 +1084,17 @@ var
   setupParams: TSetupMethodDataParameters;
 begin
   methodName := LowerCase(AMethodName);
-  if FMethodData.TryGetValue(methodName, Result) then
-    exit;
-  
-  setupParams := TSetupMethodDataParameters.Create(FIsStubOnly, FBehaviorMustBeDefined, FAllowRedefineBehaviorDefinitions);
-  Result := TMethodData.Create(ATypeName, AMethodName, setupParams, GetAutoMocker, FCallLog);
-  FMethodData.Add(methodName, Result);
+  EnterMockLock;
+  try
+    if FMethodData.TryGetValue(methodName, Result) then
+      exit;
+
+    setupParams := TSetupMethodDataParameters.Create(FIsStubOnly, FBehaviorMustBeDefined, FAllowRedefineBehaviorDefinitions);
+    Result := TMethodData.Create(ATypeName, AMethodName, setupParams, GetAutoMocker, FCallLog);
+    FMethodData.Add(methodName, Result);
+  finally
+    LeaveMockLock;
+  end;
 end;
 
 function TProxy<T>.QueryImplementedInterface(const IID: TGUID; out Obj): HRESULT;
@@ -958,51 +1104,55 @@ var
 begin
   Result := E_NOINTERFACE;
 
-  if FQueryingInternalInterface then
-    Exit;
-
-  FQueryingInternalInterface := True;
+  //Under the shared lock, as QueryInterface is
+  EnterMockLock;
   try
-    Result := FVirtualInterface.QueryInterface(IID, obj);
-    if Result = S_OK then
+    if FQueryingInternalInterface then
       Exit;
 
-    //Otherwise look in the list of interface proxies that might have been implemented
-    if (FInterfaceProxies.ContainsKey(IID)) then
-    begin
-      virtualProxy := FInterfaceProxies.Items[IID];
-      Result := virtualProxy.ProxyInterface.QueryInterface(IID, Obj);
-
-      if Result = S_OK then
-        Exit;
-    end;
-
-    //Call the parent. FQueryingInternalInterface stops the parent's search coming back here.
-    //The parent is held weakly and may already be gone: answer E_NOINTERFACE, not an AV.
-    if FParentProxy <> nil then
-    begin
-      parent := FParentProxy.Data;
-      if parent = nil then
-        Exit;
-
-      Result := parent.QueryInterface(IID, obj);
+    FQueryingInternalInterface := True;
+    try
+      Result := FVirtualInterface.QueryInterface(IID, obj);
       if Result = S_OK then
         Exit;
 
-      Result := parent.QueryImplementedInterface(IID, obj);
+      //Otherwise look in the list of interface proxies that might have been implemented
+      if (FInterfaceProxies.ContainsKey(IID)) then
+      begin
+        virtualProxy := FInterfaceProxies.Items[IID];
+        Result := virtualProxy.ProxyInterface.QueryInterface(IID, Obj);
+
+        if Result = S_OK then
+          Exit;
+      end;
+
+      //Call the parent. FQueryingInternalInterface stops the parent's search coming back here.
+      //The parent is held weakly and may already be gone: answer E_NOINTERFACE, not an AV.
+      if FParentProxy <> nil then
+      begin
+        parent := FParentProxy.Data;
+        if parent = nil then
+          Exit;
+
+        Result := parent.QueryInterface(IID, obj);
+        if Result = S_OK then
+          Exit;
+
+        Result := parent.QueryImplementedInterface(IID, obj);
+      end;
+    finally
+      FQueryingInternalInterface := False;
     end;
   finally
-    FQueryingInternalInterface := False;
+    LeaveMockLock;
   end;
 end;
 
 procedure TProxy<T>.Never(const AMethodName: string);
 var
   methodData : IMethodData;
-  pInfo : PTypeInfo;
 begin
-  pInfo := TypeInfo(T);
-  methodData := GetMethodData(AMethodName, pInfo.NameStr);
+  methodData := NamedMethodData(AMethodName);
   methodData.Never;
   ClearSetupState;
 end;
@@ -1024,11 +1174,8 @@ end;
 procedure TProxy<T>.Once(const AMethodName: string);
 var
   methodData : IMethodData;
-  pInfo : PTypeInfo;
 begin
-  pInfo := TypeInfo(T);
-
-  methodData := GetMethodData(AMethodName, pInfo.NameStr);
+  methodData := NamedMethodData(AMethodName);
   methodData.Once;
   ClearSetupState;
 end;
@@ -1052,21 +1199,24 @@ function TProxy<T>.QueryInterface(const IID: TGUID; out Obj): HRESULT;
 begin
   Result := E_NOINTERFACE;
 
-  //If we are already querying this interface, leave.
-  if FQueryingInterface then
-    Exit;
-
-  FQueryingInterface := True;
+  //Under the shared lock: the re-entry guard is a field, so another thread meeting it mid-query was refused an
+  //interface the proxy has.  The lock is re-entrant, so the guard still stops this thread's own re-entry.
+  EnterMockLock;
   try
-    //The interface requested might be one of this classes interfaces. E.g. IProxy
-    if not (IID = IInterface) then
-      Result := inherited QueryInterface(IID, Obj);
-
-    //If we have found the interface then return it.
-    if Result = S_OK then
+    //If we are already querying this interface, leave.
+    if FQueryingInterface then
       Exit;
+
+    FQueryingInterface := True;
+    try
+      //The interface requested might be one of this classes interfaces. E.g. IProxy
+      if not (IID = IInterface) then
+        Result := inherited QueryInterface(IID, Obj);
+    finally
+      FQueryingInterface := False;
+    end;
   finally
-    FQueryingInterface := False;
+    LeaveMockLock;
   end;
 end;
 
@@ -1076,11 +1226,14 @@ var
   proxy : IProxy;
   interfaceV : IVerify;
 begin
-  for methodData in FMethodData.Values do
-  begin
-    methodData.ResetCalls;
+  EnterMockLock;
+  try
+    for methodData in FMethodData.Values do
+      methodData.ResetCalls;
+    FCallLog.Clear;
+  finally
+    LeaveMockLock;
   end;
-  FCallLog.Clear;
 
   //Implemented interfaces too: VerifyAll checks them, so calls recorded on them before the
   //reset still failed it.
@@ -1092,11 +1245,13 @@ end;
 procedure TProxy<T>.SetBehaviorMustBeDefined(const value: boolean);
 begin
   FBehaviorMustBeDefined := value;
+  ApplySettings;
 end;
 
 procedure TProxy<T>.SetAllowRedefineBehaviorDefinitions(const value : boolean);
 begin
   FAllowRedefineBehaviorDefinitions := value;
+  ApplySettings;
 end;
 
 procedure TProxy<T>.SetParentProxy(const AProxy : IProxy);
@@ -1178,8 +1333,7 @@ var
 begin
   msg := CheckExpectations;
   if msg <> '' then
-    raise EMockVerificationException.Create(message + #13#10 + msg);
-
+    raise EMockVerificationException.Create(VerificationReport(message, FName, msg));
 end;
 
 function TProxy<T>.WillExecute(const func: TExecuteFunc): IWhen<T>;
@@ -1193,17 +1347,18 @@ end;
 procedure TProxy<T>.WillExecute(const AMethodName: string; const func: TExecuteFunc);
 var
   methodData : IMethodData;
-  pInfo : PTypeInfo;
 begin
   //actually record the behaviour here!
-  pInfo := TypeInfo(T);
-  methodData := GetMethodData(AMethodName, pInfo.NameStr);
+  methodData := NamedMethodData(AMethodName);
   methodData.WillExecute(func);
   ClearSetupState;
 end;
 
 function TProxy<T>.WillRaise(const exceptionClass: ExceptClass;const message : string): IWhen<T>;
 begin
+  if exceptionClass = nil then
+    raise EMockSetupException.Create('WillRaise needs an exception class: nil would make the call return a default '
+      + 'instead of raising');
   BeginSetup(TSetupMode.Behavior);
   FNextBehavior := TBehaviorType.WillRaiseAlways;
   FExceptClass := exceptionClass;
@@ -1214,17 +1369,21 @@ end;
 procedure TProxy<T>.WillRaise(const AMethodName: string; const exceptionClass: ExceptClass;const message : string);
 var
   methodData : IMethodData;
-  pInfo : PTypeInfo;
 begin
+  if exceptionClass = nil then
+    raise EMockSetupException.Create('WillRaise needs an exception class: nil would make the call return a default '
+      + 'instead of raising');
   //actually record the behaviour here!
-  pInfo := TypeInfo(T);
-  methodData := GetMethodData(AMethodName, pInfo.NameStr);
+  methodData := NamedMethodData(AMethodName);
   methodData.WillRaiseAlways(exceptionClass, message);
   ClearSetupState;
 end;
 
 function TProxy<T>.WillRaiseWhen(const exceptionClass: ExceptClass; const message: string): IWhen<T>;
 begin
+  if exceptionClass = nil then
+    raise EMockSetupException.Create('WillRaise needs an exception class: nil would make the call return a default '
+      + 'instead of raising');
   BeginSetup(TSetupMode.Behavior);
   FNextBehavior := TBehaviorType.WillRaise;
   FExceptClass := exceptionClass;
@@ -1252,11 +1411,9 @@ end;
 procedure TProxy<T>.WillReturnDefault(const AMethodName : string; const value : TValue);
 var
   methodData : IMethodData;
-  pInfo : PTypeInfo;
 begin
   //actually record the behaviour here!
-  pInfo := TypeInfo(T);
-  methodData := GetMethodData(AMethodName, pInfo.NameStr);
+  methodData := NamedMethodData(AMethodName);
   methodData.WillReturnDefault(value);
   ClearSetupState;
 end;
@@ -1273,6 +1430,7 @@ end;
 function TProxy<T>._Release: Integer;
 var
   setupAbandoned : boolean;
+  setupExceptObject : TObject;
 begin
   //A setup is abandoned when its When call never reached the proxy (a non-virtual method). The
   //statement's temporary references are then released, taking the count below where it stood
@@ -1282,7 +1440,12 @@ begin
   //count back to where it stood before the statement's first temporary reference ( FSetupEntryRefCount ).
   setupAbandoned := (FSetupMode <> TSetupMode.None) and (RefCount - 1 <= FSetupRefCount);
   if setupAbandoned then
-    ClearSetupState;
+    //With the matchers its When arguments registered: left pending ( the arguments raised, or the call never
+    //came ), they attached themselves to the next setup
+    AbandonSetup;
+
+  //Read before the inherited call, which frees Self when it releases the last reference
+  setupExceptObject := FSetupExceptObject;
 
   // Decrement first, then report. Raising before the inherited call left the reference
   // count permanently high, so the proxy and everything it owns leaked.
@@ -1291,7 +1454,7 @@ begin
   //Not while another exception propagates ( the When arguments raised, so the method was never called ): that one
   //already reports the failed setup, and raising over it lost it and leaked it.  A setup made inside an except
   //handler still reports: the exception it began under is not a new one.
-  if setupAbandoned and (System.ExceptObject = FSetupExceptObject) then
+  if setupAbandoned and (System.ExceptObject = setupExceptObject) then
     raise EMockSetupException.Create(SETUP_ABANDONED_MESSAGE);
 end;
 

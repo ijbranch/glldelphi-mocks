@@ -48,8 +48,6 @@ type
     FTypeInfo               : PTypeInfo;
     /// <summary>The proxy this one was added to by Implement, held weakly; nil for a top-level proxy.</summary>
     FParentProxy            : IWeakReference<IProxy>;
-    /// <summary>The proxies of the extra interfaces added by Implement, keyed by interface GUID.</summary>
-    FInterfaceProxies       : TDictionary<TGUID, IProxy>;
     /// <summary>Whether a definition may replace an existing one.</summary>
     FAllowRedefineBehaviorDefinitions  : Boolean;
 
@@ -106,6 +104,8 @@ type
       /// <summary>Makes every later call raise EMockException, because the owning proxy is being destroyed.
       /// </summary>
       /// <param name="ATypeName">The mocked type's name, for the message.</param>
+      /// <exception cref="EMockException">Not from Orphan itself: raised by every call on the instance afterwards.
+      /// </exception>
       procedure Orphan(const ATypeName : string);
     public
       //TVirtualInterface overrides
@@ -156,10 +156,11 @@ type
     /// <returns>The proxy.</returns>
     /// <exception cref="EMockNoProxyException">No proxy implements the type.</exception>
     function ProxyFromType(const ATypeInfo : PTypeInfo) : IProxy; virtual;
-    /// <summary>Adds the proxy of an extra interface the mock implements.</summary>
+    /// <summary>Refuses an extra interface: an auto mocked interface has no setup interface, so nothing can call
+    /// Implement on it, and the support for it here was never reached.</summary>
     /// <param name="AProxy">The interface's proxy.</param>
     /// <param name="ATypeInfo">The interface type.</param>
-    /// <exception cref="EMockProxyAlreadyImplemented">The interface is already implemented.</exception>
+    /// <exception cref="EMockException">Always.</exception>
     procedure AddImplement(const AProxy : IProxy; const ATypeInfo : PTypeInfo); virtual;
 
     /// <summary>Handles every call on the mocked instance by recording it.</summary>
@@ -210,50 +211,55 @@ implementation
 
 uses
   Delphi.Mocks.MethodData,
-  Delphi.Mocks.ParamMatcher;
+  Delphi.Mocks.ParamMatcher,
+  Delphi.Mocks.Utils;
 
 {TProxy}
 
 procedure TProxy.AddImplement(const AProxy: IProxy; const ATypeInfo : PTypeInfo);
 begin
-
-  if FInterfaceProxies.ContainsKey(GetTypeData(ATypeInfo).Guid) then
-    raise EMockProxyAlreadyImplemented.Create('The mock already implements ' + ATypeInfo.NameStr);
-
-  FInterfaceProxies.Add(GetTypeData(ATypeInfo).Guid, AProxy);
-  AProxy.SetParentProxy(Self);
+  raise EMockException.CreateFmt('The auto mocked [%s] cannot implement [%s]', [FName, ATypeInfo.NameStr]);
 end;
 
 function TProxy.CheckExpectations: string;
 var
   methodData : IMethodData;
   report : string;
+  names : TArray<string>;
 begin
   Result := '';
-  for methodData in FMethodData.Values do
-  begin
-    report := '';
-    if not methodData.Verify(report) then
+  EnterMockLock;
+  try
+    //In name order, so two reports of the same failures read the same
+    names := FMethodData.Keys.ToArray;
+    TArray.Sort<string>(names);
+    for var name in names do
     begin
-      if Result <> '' then
-        Result := Result + #13#10;
-      Result := Result + report ;
+      methodData := FMethodData[name];
+      report := '';
+      if not methodData.Verify(report) then
+      begin
+        if Result <> '' then
+          Result := Result + #13#10;
+        Result := Result + report ;
+      end;
     end;
+  finally
+    LeaveMockLock;
   end;
 end;
 
 procedure TProxy.ClearExpectations;
 var
   methodData : IMethodData;
-  proxy : IProxy;
-  interfaceV : IVerify;
 begin
-  for methodData in FMethodData.Values do
-    methodData.ClearExpectations;
-
-  for proxy in FInterfaceProxies.Values.ToArray do
-    if Supports(proxy, IVerify, interfaceV) then
-      interfaceV.ClearExpectations;
+  EnterMockLock;
+  try
+    for methodData in FMethodData.Values do
+      methodData.ClearExpectations;
+  finally
+    LeaveMockLock;
+  end;
 end;
 
 function TProxy.GetAutoMocker : IAutoMock;
@@ -284,8 +290,6 @@ begin
   FCallLog := TCallLog.Create;
   FIsStubOnly := AIsStubOnly;
 
-  FInterfaceProxies := TDictionary<TGUID, IProxy>.Create;
-
   FTypeInfo := ATypeInfo;
 
   case FTypeInfo.Kind of
@@ -309,8 +313,6 @@ begin
 
   FMethodData.Clear;
   FMethodData.Free;
-  FInterfaceProxies.Clear;
-  FInterfaceProxies.Free;
 
   FParentProxy := nil;
 
@@ -322,8 +324,11 @@ var
   methodData : IMethodData;
 begin
   //This proxy has no setup interface, so every call is an ordinary one. Its Behavior and
-  //Expectation branches could never run, and have gone.
-  TMatcherFactory.ClearMatchers;
+  //Expectation branches could never run, and have gone.  Pending matchers are discarded only while no setup is
+  //pending on this thread: this may be a call made as another mock's When arguments are evaluated.
+  TMatcherFactory.ClearMatchersOutsideSetup;
+  //Not under the shared lock as a whole: GetMethodData and RecordHit take it for their bookkeeping, and the
+  //behaviour ( a further auto mock ) runs outside it
   methodData := GetMethodData(method.Name, FTypeInfo.NameStr);
   methodData.RecordHit(Args, Method.ReturnType, Method, Result);
 end;
@@ -334,45 +339,46 @@ var
   setupParams: TSetupMethodDataParameters;
 begin
   methodName := LowerCase(AMethodName);
-  if FMethodData.TryGetValue(methodName, Result) then
-    exit;
+  EnterMockLock;
+  try
+    if FMethodData.TryGetValue(methodName, Result) then
+      exit;
 
-  setupParams := TSetupMethodDataParameters.Create(FIsStubOnly, FBehaviorMustBeDefined, FAllowRedefineBehaviorDefinitions);
-  Result := TMethodData.Create(string(FTypeInfo.Name), AMethodName, setupParams, GetAutoMocker, FCallLog);
-  FMethodData.Add(methodName, Result);
+    setupParams := TSetupMethodDataParameters.Create(FIsStubOnly, FBehaviorMustBeDefined, FAllowRedefineBehaviorDefinitions);
+    Result := TMethodData.Create(string(FTypeInfo.Name), AMethodName, setupParams, GetAutoMocker, FCallLog);
+    FMethodData.Add(methodName, Result);
+  finally
+    LeaveMockLock;
+  end;
 end;
 
 function TProxy.QueryImplementedInterface(const IID: TGUID; out Obj): HRESULT;
 var
-  virtualProxy : IProxy;
   parent : IProxy;
 begin
   Result := E_NOINTERFACE;
 
-  if FQueryingInternalInterface then
-    Exit;
-
-  FQueryingInternalInterface := True;
+  //Under the shared lock: the re-entry guard is a field, and another thread meeting it was refused
+  EnterMockLock;
   try
-    //Otherwise look in the list of interface proxies that might have been implemented
-    if (FInterfaceProxies.ContainsKey(IID)) then
-    begin
-      virtualProxy := FInterfaceProxies.Items[IID];
-      Result := virtualProxy.ProxyInterface.QueryInterface(IID, Obj);
+    if FQueryingInternalInterface then
+      Exit;
 
-      if result = S_OK then
-        Exit;
-    end;
-
-    //Call the parent, which is held weakly and may already be gone.
-    if FParentProxy <> nil then
-    begin
-      parent := FParentProxy.Data;
-      if parent <> nil then
-        Result := parent.QueryInterface(IID, obj);
+    FQueryingInternalInterface := True;
+    try
+      //No implemented interfaces to search: an auto mocked interface cannot have any.  Call the parent, which is
+      //held weakly and may already be gone.
+      if FParentProxy <> nil then
+      begin
+        parent := FParentProxy.Data;
+        if parent <> nil then
+          Result := parent.QueryInterface(IID, obj);
+      end;
+    finally
+      FQueryingInternalInterface := False;
     end;
   finally
-    FQueryingInternalInterface := False;
+    LeaveMockLock;
   end;
 end;
 
@@ -380,37 +386,52 @@ function TProxy.QueryInterface(const IID: TGUID; out Obj): HRESULT;
 begin
   Result := E_NOINTERFACE;
 
-  //If we are already querying this interface, leave.
-  if FQueryingInterface then
-    Exit;
-
-  FQueryingInterface := True;
+  //Under the shared lock: the re-entry guard is a field, and another thread meeting it was refused
+  EnterMockLock;
   try
-    //The interface requested might be one of this classes interfaces. E.g. IProxy
-    Result := inherited QueryInterface(IID, Obj);
+    //If we are already querying this interface, leave.
+    if FQueryingInterface then
+      Exit;
+
+    FQueryingInterface := True;
+    try
+      //The interface requested might be one of this classes interfaces. E.g. IProxy
+      Result := inherited QueryInterface(IID, Obj);
+    finally
+      FQueryingInterface := False;
+    end;
   finally
-    FQueryingInterface := False;
+    LeaveMockLock;
   end;
 end;
 
 procedure TProxy.ResetCalls;
 var
   methodData : IMethodData;
-  proxy : IProxy;
-  interfaceV : IVerify;
 begin
-  for methodData in FMethodData.Values do
-    methodData.ResetCalls;
-  FCallLog.Clear;
-
-  for proxy in FInterfaceProxies.Values.ToArray do
-    if Supports(proxy, IVerify, interfaceV) then
-      interfaceV.ResetCalls;
+  EnterMockLock;
+  try
+    for methodData in FMethodData.Values do
+      methodData.ResetCalls;
+    FCallLog.Clear;
+  finally
+    LeaveMockLock;
+  end;
 end;
 
 procedure TProxy.SetBehaviorMustBeDefined(const AValue: boolean);
+var
+  methodData : IMethodData;
 begin
-  FBehaviorMustBeDefined := AValue;
+  EnterMockLock;
+  try
+    FBehaviorMustBeDefined := AValue;
+    //The methods already used too, not only those used from now on
+    for methodData in FMethodData.Values do
+      methodData.UpdateSettings(FBehaviorMustBeDefined, FAllowRedefineBehaviorDefinitions);
+  finally
+    LeaveMockLock;
+  end;
 end;
 
 procedure TProxy.SetParentProxy(const AProxy : IProxy);
@@ -434,15 +455,6 @@ begin
   if ProxySupports(FVirtualInterface, interfaceID) then
   begin
     Result := Self;
-    Exit;
-  end;
-
-  //Are our children the proxy for this type?
-  if FInterfaceProxies.ContainsKey(interfaceID) then
-  begin
-    //Remember that the virtual interface will be of the passed in type, therefore
-    //return its proxy.
-    Result := FInterfaceProxies.Items[interfaceID].ProxyFromType(ATypeInfo);
     Exit;
   end;
 
@@ -472,7 +484,7 @@ var
 begin
   msg := CheckExpectations;
   if msg <> '' then
-    raise EMockVerificationException.Create(message + #13#10 + msg);
+    raise EMockVerificationException.Create(VerificationReport(message, FName, msg));
 end;
 
 { TProxy.TProxyVirtualInterface }
@@ -545,17 +557,9 @@ begin
 end;
 
 procedure TProxy.VerifyAll(const message: string);
-var
-  proxy : IProxy;
-  interfaceV : IVerify;
 begin
-  //Verify ourselves.
+  //No implemented interfaces to verify: an auto mocked interface cannot have any
   Verify(message);
-
-  //Now verify all our children.
-  for proxy in FInterfaceProxies.Values.ToArray do
-    if Supports(proxy, IVerify, interfaceV) then
-      interfaceV.Verify(message);
 end;
 
 end.

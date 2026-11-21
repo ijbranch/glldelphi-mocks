@@ -55,6 +55,8 @@ type
     /// <summary>Expects exactly one call, whatever the arguments.</summary>
     /// <param name="AMethodName">The method.</param>
     /// <exception cref="EMockException">The expectation is already defined.</exception>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure Once(const AMethodName : string);overload;
 
     /// <summary>Expects no call with the When call's arguments.</summary>
@@ -63,6 +65,8 @@ type
     /// <summary>Expects no call, whatever the arguments.</summary>
     /// <param name="AMethodName">The method.</param>
     /// <exception cref="EMockException">The expectation is already defined.</exception>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure Never(const AMethodName : string);overload;
 
     /// <summary>Expects one or more calls with the When call's arguments.</summary>
@@ -71,6 +75,8 @@ type
     /// <summary>Expects one or more calls, whatever the arguments.</summary>
     /// <param name="AMethodName">The method.</param>
     /// <exception cref="EMockException">An at-least expectation is already defined.</exception>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure AtLeastOnce(const AMethodName : string);overload;
 
     /// <summary>Expects a minimum number of calls with the When call's arguments.</summary>
@@ -81,6 +87,8 @@ type
     /// <param name="AMethodName">The method.</param>
     /// <param name="times">The minimum.</param>
     /// <exception cref="EMockException">An at-least expectation is already defined.</exception>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure AtLeast(const AMethodName : string; const times : Cardinal);overload;
 
     /// <summary>Expects a maximum number of calls with the When call's arguments.</summary>
@@ -91,6 +99,8 @@ type
     /// <param name="AMethodName">The method.</param>
     /// <param name="times">The maximum.</param>
     /// <exception cref="EMockException">The expectation is already defined.</exception>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure AtMost(const AMethodName : string; const times : Cardinal);overload;
 
     /// <summary>Expects an inclusive range of calls with the When call's arguments.</summary>
@@ -102,7 +112,8 @@ type
     /// <param name="AMethodName">The method.</param>
     /// <param name="a">The minimum.</param>
     /// <param name="b">The maximum; must not be less than a.</param>
-    /// <exception cref="EMockSetupException">b is less than a.</exception>
+    /// <exception cref="EMockSetupException">b is less than a; or the mocked type has no method named AMethodName,
+    /// or a When setup is pending.</exception>
     procedure Between(const AMethodName : string; const a,b : Cardinal);overload;
 
     /// <summary>Expects an exact number of calls with the When call's arguments.</summary>
@@ -113,28 +124,38 @@ type
     /// <param name="AMethodName">The method.</param>
     /// <param name="times">The number of calls.</param>
     /// <exception cref="EMockException">The expectation is already defined.</exception>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure Exactly(const AMethodName : string; const times : Cardinal);overload;
 
     /// <summary>Expects the When method, with the When call's arguments, to be first called before the first call
     /// of another method. Both must be called for the expectation to be met.</summary>
     /// <param name="AMethodName">The method the When method must precede.</param>
     /// <returns>The When step.</returns>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     function Before(const AMethodName : string) : IWhen<T>;overload;
     /// <summary>Expects one method to be first called before the first call of another. Both must be called.
     /// </summary>
     /// <param name="AMethodName">The method that must come first.</param>
     /// <param name="ABeforeMethodName">The method it must precede.</param>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure Before(const AMethodName : string; const ABeforeMethodName : string);overload;
 
     /// <summary>Expects the When method, with the When call's arguments, to be first called after the first call
     /// of another method. Both must be called for the expectation to be met.</summary>
     /// <param name="AMethodName">The method the When method must follow.</param>
     /// <returns>The When step.</returns>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     function After(const AMethodName : string) : IWhen<T>;overload;
     /// <summary>Expects one method to be first called after the first call of another. Both must be called.
     /// </summary>
     /// <param name="AMethodName">The method that must come later.</param>
     /// <param name="AAfterMethodName">The method it must follow.</param>
+    /// <exception cref="EMockSetupException">The mocked type has no method named AMethodName, or a When setup is
+    /// pending.</exception>
     procedure After(const AMethodName : string; const AAfterMethodName : string);overload;
 
     /// <summary>Removes every expectation, including those of the interfaces the mock implements.</summary>
@@ -207,7 +228,8 @@ type
     /// <summary>Runs a function on every call of a method, whatever the arguments.</summary>
     /// <param name="AMethodName">The method.</param>
     /// <param name="func">The function to run.</param>
-    /// <exception cref="EMockSetupException">The behaviour is already defined.</exception>
+    /// <exception cref="EMockSetupException">The behaviour is already defined; or the mocked type has no method
+    /// named AMethodName, or a When setup is pending.</exception>
     procedure WillExecute(const AMethodName : string; const func : TExecuteFunc);overload;
 
     //set the default return value for a method when it is called with parameter values we
@@ -216,15 +238,17 @@ type
     /// the real method running.</summary>
     /// <param name="AMethodName">The method.</param>
     /// <param name="value">The default value; nil and empty values are allowed.</param>
-    /// <exception cref="EMockSetupException">A default is already defined and redefinition is not allowed.
-    /// </exception>
+    /// <exception cref="EMockSetupException">A default is already defined and redefinition is not allowed, the
+    /// mocked type has no method named AMethodName, or a When setup is pending.</exception>
     procedure WillReturnDefault(const AMethodName : string; const value : TValue);
 
     //set the Exception class that will be raised when the method is called with the parmeters specified
-    /// <summary>Raises on every call of the When method, whatever the arguments.</summary>
+    /// <summary>Raises on every call of the When method, whatever the arguments: the When call's arguments name the
+    /// method and are not compared.  WillRaiseWhen raises only for matching arguments.</summary>
     /// <param name="exceptionClass">The exception class to raise.</param>
     /// <param name="message">The exception message; empty for a generic one.</param>
     /// <returns>The When step.</returns>
+    /// <exception cref="EMockSetupException">exceptionClass is nil, or a setup is pending.</exception>
     function WillRaise(const exceptionClass : ExceptClass; const message : string = '') : IWhen<T>;overload;
 
     //This method will always raise an exception.. this behavior will trump any other defined behaviors
@@ -232,7 +256,8 @@ type
     /// <param name="AMethodName">The method.</param>
     /// <param name="exceptionClass">The exception class to raise.</param>
     /// <param name="message">The exception message; empty for a generic one.</param>
-    /// <exception cref="EMockSetupException">The behaviour is already defined.</exception>
+    /// <exception cref="EMockSetupException">The behaviour is already defined, exceptionClass is nil, the mocked
+    /// type has no method named AMethodName, or a When setup is pending.</exception>
     procedure WillRaise(const AMethodName : string; const exceptionClass : ExceptClass; const message : string = '');overload;
 
     //set the Exception class that will be raised when the method is called with the parmeters specified
@@ -240,15 +265,18 @@ type
     /// <param name="exceptionClass">The exception class to raise.</param>
     /// <param name="message">The exception message; empty for a generic one.</param>
     /// <returns>The When step.</returns>
+    /// <exception cref="EMockSetupException">exceptionClass is nil, or a setup is pending.</exception>
     function WillRaiseWhen(const exceptionClass: ExceptClass; const message: string = ''): IWhen<T>;
 
-    //If true, calls to methods for which we have not defined a behavior will cause verify to fail.
-    /// <summary>If True, a call to a method with no behaviour, default or expectation raises.</summary>
+    //If true, a call to a method with no behaviour, default or expectation raises EMockException at the call
+    //(Verify is not involved, so code under test that catches exceptions hides it).
+    /// <summary>If True, a call to a method with no behaviour, default or expectation raises EMockException at the
+    /// call, on an auto mocked mock too.  A change applies to methods already used as well.</summary>
     property BehaviorMustBeDefined : boolean read GetBehaviorMustBeDefined write SetBehaviorMustBeDefined;
 
     //If true, it is possible to overwrite a already defined behaviour.
-    /// <summary>If True, defining a behaviour or expectation again replaces the old one instead of raising.
-    /// </summary>
+    /// <summary>If True, defining a behaviour or expectation again replaces the old one instead of raising.  A change
+    /// applies to methods already used as well.</summary>
     property AllowRedefineBehaviorDefinitions: boolean read GetAllowRedefineBehaviorDefinitions write SetAllowRedefineBehaviorDefinitions;
   end;
 
@@ -379,6 +407,8 @@ type
     /// <returns>The stub.</returns>
     /// <exception cref="EMockNoRTTIException">T has no RTTI to stub.</exception>
     /// <exception cref="EMockException">T is not an interface or a class.</exception>
+    /// <exception cref="EMockNoProxyException">The proxy built for T does not implement the interface the mock needs
+    /// ( an internal error ).</exception>
     class function Create(const ACreateObjectFunc: TFunc<T>): TStub<T>; overload; static;
     // explicit cleanup. Not sure if we really need this.
     /// <summary>Releases the stub early. Calling it again does nothing.</summary>
@@ -415,11 +445,15 @@ type
     /// <returns>The mock.</returns>
     /// <exception cref="EMockNoRTTIException">T has no RTTI to mock.</exception>
     /// <exception cref="EMockException">T is not an interface or a class.</exception>
+    /// <exception cref="EMockNoProxyException">The proxy built for T does not implement the interface the mock needs
+    /// ( an internal error ).</exception>
     class function Create(const AAutoMock: IAutoMock; const ACreateObjectFunc: TFunc<T>): TMock<T>; overload; static;
 
     /// <summary>Returns the mock's setup.</summary>
     /// <returns>The setup.</returns>
     /// <exception cref="EMockException">The mock has not been created, or has been freed.</exception>
+    /// <exception cref="EMockNoProxyException">Never from this overload; Setup&lt;I&gt; raises it when the mock does
+    /// not implement I.</exception>
     function Setup : IMockSetup<T>; overload;
     /// <summary>Returns the setup of an interface added with Implement.</summary>
     /// <returns>The setup.</returns>
@@ -430,6 +464,10 @@ type
     /// <summary>Checks the mock's own expectations.</summary>
     /// <param name="message">Text placed before the detail of a failure.</param>
     /// <exception cref="EMockVerificationException">An expectation is not met.</exception>
+    /// <exception cref="EMockException">The mock has not been created, or has been freed, or its proxy does not
+    /// implement IVerify ( an internal error ).</exception>
+    /// <exception cref="EMockNoProxyException">Never from this overload; Verify&lt;I&gt; raises it when the mock does
+    /// not implement I.</exception>
     procedure Verify(const message : string = ''); overload;
     /// <summary>Checks the expectations of an interface added with Implement.</summary>
     /// <param name="message">Text placed before the detail of a failure.</param>
@@ -439,12 +477,18 @@ type
     /// <summary>Checks the expectations of the mock and of every interface added with Implement.</summary>
     /// <param name="message">Text placed before the detail of a failure.</param>
     /// <exception cref="EMockVerificationException">An expectation is not met.</exception>
+    /// <exception cref="EMockException">The mock has not been created, or has been freed, or its proxy does not
+    /// implement IVerify ( an internal error ).</exception>
     procedure VerifyAll(const message : string = '');
     /// <summary>Forgets every recorded call, including those of the interfaces added with Implement.</summary>
+    /// <exception cref="EMockException">The mock has not been created, or has been freed, or its proxy does not
+    /// implement IVerify ( an internal error ).</exception>
     procedure ResetCalls;
 
     /// <summary>Describes every unmet expectation of the mock itself.</summary>
     /// <returns>The description, or an empty string.</returns>
+    /// <exception cref="EMockException">The mock has not been created, or has been freed, or its proxy does not
+    /// implement IVerify ( an internal error ).</exception>
     function CheckExpectations: string;
     /// <summary>Makes the mock implement a further interface.</summary>
     /// <exception cref="ENotSupportedException">The mock is of a class; only interface mocks can.</exception>
@@ -452,10 +496,12 @@ type
     procedure Implement<I : IInterface>; overload;
     /// <summary>Returns the mocked instance.</summary>
     /// <returns>The instance.</returns>
+    /// <exception cref="EMockException">The mock has not been created, or has been freed.</exception>
     function Instance : T; overload;
     /// <summary>Returns the mock as an interface added with Implement.</summary>
     /// <returns>The instance, as I.</returns>
     /// <exception cref="EMockNoProxyException">The mock does not implement I.</exception>
+    /// <exception cref="EMockException">The mock has not been created, or has been freed.</exception>
     function Instance<I : IInterface> : I; overload;
     /// <summary>Returns the mocked instance as a TValue.</summary>
     /// <returns>The instance.</returns>
@@ -600,14 +646,20 @@ type
     /// <summary>Accepts an argument whose public and published properties equal the value's.</summary>
     /// <param name="Value">The value to compare with.</param>
     /// <returns>The value, to pass in the parameter's place.</returns>
+    /// <exception cref="EMockSetupException">T is a class or record with no public or published properties to compare,
+    /// so the matcher would accept any instance.</exception>
     function AreSamePropertiesThat<T>(const Value: T): T;
     /// <summary>Accepts an argument whose public and published fields equal the value's.</summary>
     /// <param name="Value">The value to compare with.</param>
     /// <returns>The value, to pass in the parameter's place.</returns>
+    /// <exception cref="EMockSetupException">T is a class or record with no public or published fields to compare,
+    /// so the matcher would accept any instance.</exception>
     function AreSameFieldsThat<T>(const Value: T): T;
     /// <summary>Accepts an argument whose public and published fields and properties equal the value's.</summary>
     /// <param name="Value">The value to compare with.</param>
     /// <returns>The value, to pass in the parameter's place.</returns>
+    /// <exception cref="EMockSetupException">T is a class or record with no public or published fields and properties to compare,
+    /// so the matcher would accept any instance.</exception>
     function AreSameFieldsAndPropertiedThat<T>(const Value: T): T;
   end;
 
@@ -650,6 +702,14 @@ type
     /// <param name="Param2">The second value.</param>
     /// <returns>True when every property is equal.</returns>
     class function CompareProperties<T>(Param1, Param2: T): Boolean;
+    /// <summary>Refuses a member comparison that would compare nothing.  A class keeps its fields private as a rule,
+    /// and with no public or published member to compare, any two instances compared equal.</summary>
+    /// <param name="AFields">Whether the matcher compares fields.</param>
+    /// <param name="AProperties">Whether the matcher compares properties.</param>
+    /// <param name="AMatcher">The matcher's name, for the message.</param>
+    /// <exception cref="EMockSetupException">T is a class or record with no public or published field ( when
+    /// AFields ) and no readable public or published property ( when AProperties ).</exception>
+    class procedure CheckComparable<T>(const AFields, AProperties: Boolean; const AMatcher: string);
   end;
 
   //Exception Types that the mocks will raise.
@@ -1121,6 +1181,7 @@ end;
 function ItRec.AreSameFieldsAndPropertiedThat<T>(const Value: T): T;
 begin
   Result := Value;
+  TComparer.CheckComparable<T>(True, True, 'AreSameFieldsAndPropertiedThat');
 
   TMatcherFactory.Create<T>(ParamIndex,
     function(Param: T): Boolean
@@ -1132,6 +1193,7 @@ end;
 function ItRec.AreSameFieldsThat<T>(const Value: T): T;
 begin
   Result := Value;
+  TComparer.CheckComparable<T>(True, False, 'AreSameFieldsThat');
 
   TMatcherFactory.Create<T>(ParamIndex,
     function(Param: T): Boolean
@@ -1143,6 +1205,7 @@ end;
 function ItRec.AreSamePropertiesThat<T>(const Value: T): T;
 begin
   Result := Value;
+  TComparer.CheckComparable<T>(False, True, 'AreSamePropertiesThat');
 
   TMatcherFactory.Create<T>(ParamIndex,
     function(Param: T): Boolean
@@ -1157,30 +1220,26 @@ begin
 end;
 
 function ItRec.DefaultComparer<T>: IEqualityComparer<T>;
-var
-  LCtx: TRttiContext;
-  LType: TRttiType;
-  LMethod: TRttiMethod;
 begin
-  Result := TEqualityComparer<T>.Default;
-
-  LType := LCtx.GetType(TypeInfo(T));
-  if (LType <> nil) and LType.IsRecord and LType.TryGetMethod('&op_Equality', LMethod) then
-    Result := TEqualityComparer<T>.Construct(
-      function(const Left, Right: T): Boolean
-      begin
-        //Resolve the operator through the captured context when the comparison runs. The
-        //TRttiMethod found above belongs to a context that ended with this function, and the
-        //comparer is used later, at call time.
-        Result := LCtx.GetType(TypeInfo(T)).GetMethod('&op_Equality').Invoke(nil,
-          [TValue.From<T>(Left), TValue.From<T>(Right)]).AsBoolean;
-      end,
-      function(const Value: T): Integer
-      begin
-        //A constant hash is consistent with any equality. Hashing the record's bytes was not:
-        //two records equal by their operator could hash differently (string fields are pointers).
-        Result := 0;
-      end);
+  //Records, arrays and interfaces are compared as a literal argument is ( SameValue: the record's = operator or
+  //its fields, the array's elements, the interface's identity ).  The default comparer compared their bytes or
+  //references, so IsEqualTo(rec) refused a record whose string field held equal text in another string, while
+  //the same record passed literally matched.
+  case PTypeInfo(TypeInfo(T))^.Kind of
+    tkRecord, tkMRecord, tkArray, tkDynArray, tkInterface:
+      Result := TEqualityComparer<T>.Construct(
+        function(const Left, Right: T): Boolean
+        begin
+          Result := SameValue(TValue.From<T>(Left), TValue.From<T>(Right));
+        end,
+        function(const Value: T): Integer
+        begin
+          //A constant hash is consistent with any equality; hashing the bytes was not.
+          Result := 0;
+        end);
+  else
+    Result := TEqualityComparer<T>.Default;
+  end;
 end;
 
 function ItRec.IsAny<T>: T;
@@ -1424,6 +1483,19 @@ begin
     Result := Value.GetReferenceToRawData;
 end;
 
+/// <summary>Returns an object's own class, seeing through a class mock's interception.</summary>
+/// <remarks>TVirtualMethodInterceptor.Proxify gives the instance a generated class: a copy of its class's VMT, so
+/// the same name, whose parent is that class.  Compared as it is, a class mock's Instance differed from a plain
+/// instance of the same class.</remarks>
+/// <param name="AObject">The object.</param>
+/// <returns>Its class, or for an intercepted instance the class it was created as.</returns>
+function UnproxiedClass(const AObject: TObject): TClass;
+begin
+  Result := AObject.ClassType;
+  while (Result.ClassParent <> nil) and (Result.ClassParent.ClassName = Result.ClassName) do
+    Result := Result.ClassParent;
+end;
+
 class function TComparer.CompareMemberValues(const Members: TArray<TRttiMember>; const Instance1, Instance2: TValue;
   const Visited: TList<TComparedPair>): Boolean;
 var
@@ -1434,6 +1506,7 @@ var
   Pair: TComparedPair;
   Child1, Child2: TObject;
   ChildType: TRttiType;
+  LContext: TRttiContext;
 begin
   Result := SameValue(Instance1, Instance2);
   if Result or Instance1.IsEmpty or Instance2.IsEmpty then
@@ -1441,6 +1514,10 @@ begin
 
   Address1 := InstanceAddress(Instance1);
   Address2 := InstanceAddress(Instance2);
+  //Instances of different classes differ, whatever the members they share
+  if (Instance1.Kind = tkClass) and (Instance2.Kind = tkClass)
+    and (UnproxiedClass(TObject(Address1)) <> UnproxiedClass(TObject(Address2))) then
+    Exit(False);
   for Pair in Visited do
     if (Pair.Left = Address1) and (Pair.Right = Address2) then
       Exit(True);
@@ -1476,9 +1553,13 @@ begin
       Child2 := MemberValue2.AsObject;
       if (Child1 = nil) or (Child2 = nil) then
         Result := Child1 = Child2
+      else if UnproxiedClass(Child1) <> UnproxiedClass(Child2) then
+        //A TDog and a TCat held as TAnimal: comparing only the declared class's fields called them equal
+        Result := False
       else
       begin
-        ChildType := MemberValue1.RttiType;
+        //The runtime class, so a descendant's own fields are compared as well as the declared class's
+        ChildType := LContext.GetType(UnproxiedClass(Child1));
         Result := CompareMemberValues(TArray<TRttiMember>(ChildType.GetFields), MemberValue1, MemberValue2, Visited)
           and CompareMemberValues(TArray<TRttiMember>(ChildType.GetProperties), MemberValue1, MemberValue2, Visited);
       end;
@@ -1519,6 +1600,35 @@ var
 begin
   RTTI := TRttiContext.Create;
   Result := CompareMembers<TRttiProperty, T>(RTTI.GetType(TypeInfo(T)).GetProperties, Param1, Param2);
+end;
+
+class procedure TComparer.CheckComparable<T>(const AFields, AProperties: Boolean; const AMatcher: string);
+var
+  RTTI: TRttiContext;
+  LType: TRttiType;
+  LCount: Integer;
+begin
+  if not (PTypeInfo(TypeInfo(T))^.Kind in [tkClass, tkRecord, tkMRecord]) then
+    Exit;
+
+  RTTI := TRttiContext.Create;
+  LType := RTTI.GetType(TypeInfo(T));
+  if LType = nil then
+    Exit;
+
+  LCount := 0;
+  if AFields then
+    for var LField in LType.GetFields do
+      if LField.Visibility in [mvPublic, mvPublished] then
+        Inc(LCount);
+  if AProperties then
+    for var LProperty in LType.GetProperties do
+      if (LProperty.Visibility in [mvPublic, mvPublished]) and LProperty.IsReadable then
+        Inc(LCount);
+
+  if LCount = 0 then
+    raise EMockSetupException.CreateFmt('%s<%s> has nothing to compare: %s compares public and published members '
+      + 'only, and %s has none, so any instance would match.', [AMatcher, LType.Name, AMatcher, LType.Name]);
 end;
 
 end.

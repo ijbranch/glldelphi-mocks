@@ -293,6 +293,23 @@ type
     /// <param name="Args">The call's arguments; Args[0] is Self.</param>
     /// <returns>The behaviour, or nil when none applies.</returns>
     function FindBestBehavior(const Args: TArray<TValue>) : IBehavior;
+    /// <summary>Records a call and produces its result, with the behaviour the caller has already found, so a
+    /// class proxy, which needs the behaviour to decide whether the real method runs, does not search twice (and
+    /// run user matchers twice).</summary>
+    /// <param name="Args">The call's arguments; Args[0] is Self.</param>
+    /// <param name="returnType">The method's return type, or nil for a procedure.</param>
+    /// <param name="method">The method's RTTI, or nil when unknown.</param>
+    /// <param name="behavior">The behaviour FindBestBehavior found for Args, or nil.</param>
+    /// <param name="Result">The value to return from the call.</param>
+    /// <exception cref="EMockException">No behaviour, default or automock supplies a required return value, or
+    /// BehaviorMustBeDefined is set and nothing was defined.</exception>
+    procedure RecordHitWithBehavior(const Args: TArray<TValue>; const returnType : TRttiType; const method : TRttiMethod;
+      const behavior : IBehavior; out Result: TValue);
+    /// <summary>Applies the proxy's current settings.  The proxy calls it when a setting changes, so a setting
+    /// changed after a method was first used applies to that method too.</summary>
+    /// <param name="ABehaviorMustBeDefined">Whether a call with no behaviour or expectation must raise.</param>
+    /// <param name="AAllowRedefineBehaviorDefinitions">Whether a definition may replace an existing one.</param>
+    procedure UpdateSettings(const ABehaviorMustBeDefined, AAllowRedefineBehaviorDefinitions : Boolean);
   end;
 
   /// <summary>Verification of a proxy's expectations.</summary>

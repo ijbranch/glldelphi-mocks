@@ -322,7 +322,8 @@ begin
 end;
 {$ELSE}
 begin
-  Assert.Pass('This test applies to Win64 only');
+  //Ignore, not Pass: a run that compared nothing must not read as a pass
+  Assert.Ignore('This test applies to Win64 only');
 end;
 {$ENDIF}
 

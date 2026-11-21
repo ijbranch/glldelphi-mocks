@@ -18,42 +18,12 @@ Everything is built on **RTTI**, which is why an interface you want to mock must
 
 There are two ways, and they suit different situations.
 
-### By source path — what the test project here does, and the simpler option
+Point your test project at the library's `Source` folder and add `Delphi.Mocks` to the unit's
+`uses`. That is all a test needs; nothing has to be installed into the IDE. ( Building the package
+instead, and the exact settings for both ways, are in `Help.md`, section 6. )
 
-Add `D:\glldelphi-mocks\Source` to the project's unit search path and `uses Delphi.Mocks`. Nothing
-to install, nothing to build first, and a change to the library is picked up by your next build.
-
-This is what `Tests\Delphi.Mocks.Tests.dproj` does:
-
-```xml
-<DCC_UnitSearchPath>..\Source;$(DUNITX);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-```
-
-### By package — when several projects share it
-
-Build `packages\RAD Studio 13.0\VSoft.DelphiMocksR.dproj` in **all four modes** (Win32 + Win64 ×
-Debug + Release). It is a **runtime** package (`{$RUNONLY}`) requiring `rtl` alone, so there is
-nothing to install into the IDE — a design-time install is neither needed nor possible.
-
-On RAD Studio 37.0 the output is `VSoft.DelphiMocksR370.bpl`; Release goes to
-`$(BDSCOMMONDIR)\Bpl\Win64` and Debug to `…\Bpl\Win64\Debug`. Then put
-`$(BDSCOMMONDIR)\Dcp\$(Platform)` on the consuming project's search path as usual, or link the
-package with **Project > Options > Packages > Runtime packages**.
-
-### Whichever you choose, you also need DUnitX
-
-The library does not depend on a test framework — but the tests you write with it do, and the
-example code in this guide is DUnitX. The estate's DUnitX is the `gllDUnitX` fork, consumed as
-**source from a sibling checkout**. The test project here declares it:
-
-```xml
-<DUNITX Condition="'$(DUNITX)'==''">..\..\gllDUnitX\Source</DUNITX>
-```
-
-and refuses to build without it:
-
-> `DUnitX was not found at '<path>'. Clone https://github.com/ijbranch/gllDUnitX as a sibling of
-> this repository, or set the DUNITX property or environment variable to its Source folder.`
+The tests you write with it also need a test framework. The examples in this guide use DUnitX, our
+`gllDUnitX` copy, kept beside this one.
 
 ---
 
@@ -380,9 +350,10 @@ begin
 end;
 ```
 
-**`BehaviorMustBeDefined`** is the switch to know about. Leave it true and any call to a method
-you did not set up makes `Verify` fail — strict, and useful when you want to know exactly what the
-system under test touches. Set it false and unconfigured calls are tolerated.
+**`BehaviorMustBeDefined`** is the switch to know about. Turn it on and any call to a method you
+did not set up fails straight away, at the call itself — strict, and useful when you want to know
+exactly what the system under test touches. ( If the code you are testing catches errors, it will
+catch this one too, so the test may still pass. ) Leave it off and unconfigured calls are tolerated.
 
 ---
 
@@ -499,3 +470,6 @@ failure prints the exception and exits 1.
 | upstream's description and the full matcher list | [README.md](README.md) |
 | what this fork fixed, and what it refused from upstream | [CHANGELOG.md](CHANGELOG.md) |
 | worked examples that compile | `Examples\` and `Tests\` |
+
+---
+*Version: 1.0 – 21 November 2026 10:28*

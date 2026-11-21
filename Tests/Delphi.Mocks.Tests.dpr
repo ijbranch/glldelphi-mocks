@@ -38,7 +38,8 @@ uses
   Delphi.Mocks.Tests.Stubs in 'Delphi.Mocks.Tests.Stubs.pas',
   Delphi.Mocks.Tests.ReturnTypePatch in 'Delphi.Mocks.Tests.ReturnTypePatch.pas',
   Delphi.Mocks.Tests.Regression in 'Delphi.Mocks.Tests.Regression.pas',
-  Delphi.Mocks.Tests.RegressionNewApi in 'Delphi.Mocks.Tests.RegressionNewApi.pas';
+  Delphi.Mocks.Tests.RegressionNewApi in 'Delphi.Mocks.Tests.RegressionNewApi.pas',
+  Delphi.Mocks.Tests.Review in 'Delphi.Mocks.Tests.Review.pas';
 
 {$R *.RES}
 

@@ -45,6 +45,10 @@ type
   private
     /// <summary>The intercepted instance.</summary>
     FInstance : T;
+    /// <summary>The proxy's own reference to a reference-counted instance ( a TInterfacedObject ), nil for any other.
+    /// Constructed by RTTI, such an instance starts with no reference, so the code under test taking and releasing
+    /// an interface freed it, and the proxy then freed it again.</summary>
+    FInstanceRef : IInterface;
     /// <summary>The interceptor that routes the instance's virtual calls to DoBefore.</summary>
     FVMInterceptor : TVirtualMethodInterceptor;
     /// <summary>Whether a method takes part in the instance's construction or destruction, which a mock must
@@ -80,7 +84,9 @@ type
 implementation
 
 uses
-  Delphi.Mocks.Helpers;
+  Delphi.Mocks.Helpers,
+  Delphi.Mocks.ParamMatcher,
+  Delphi.Mocks.Utils;
 
 { TObjectProxy<T> }
 
@@ -112,11 +118,27 @@ begin
 
   FVMInterceptor.Proxify(instance.AsObject);
   FVMInterceptor.OnBefore := DoBefore;
+
+  if instance.AsObject is TInterfacedObject then
+    FInstanceRef := TInterfacedObject(instance.AsObject);
 end;
 
 destructor TObjectProxy<T>.Destroy;
+var
+  lInstance : TObject;
 begin
-  TObject(Pointer(@FInstance)^).Free;//always destroy the instance before the interceptor.
+  //Always destroy the instance before the interceptor.
+  lInstance := TObject(Pointer(@FInstance)^);
+  if FInstanceRef <> nil then
+  begin
+    //Still referenced by the code under test: it outlives the mock, so it goes back to its own class first, rather
+    //than keep a class the interceptor's destruction frees.  Otherwise this release frees it.
+    if (FVMInterceptor <> nil) and (TInterfacedObject(lInstance).RefCount > 1) then
+      FVMInterceptor.Unproxify(lInstance);
+    FInstanceRef := nil;
+  end
+  else
+    lInstance.Free;
   FVMInterceptor.Free;
   inherited;
 end;
@@ -134,6 +156,7 @@ var
   vArgs: TArray<TValue>;
   i, l: Integer;
   methodData : IMethodData;
+  behavior : IBehavior;
   pInfo : PTypeInfo;
 begin
   //Don't intercept the TObject methods, nor a class's own destructor or construction and
@@ -142,9 +165,6 @@ begin
   DoInvoke := True;
   if (Method.Parent.AsInstance.MetaclassType = TObject) or IsLifecycleMethod(Method) then
     Exit;
-
-  pInfo := TypeInfo(T);
-  methodData := GetMethodData(method.Name,pInfo.NameStr);
 
   //Included instance as first argument because TExpectation.Match
   //deduces that the first argument is the object instance.
@@ -157,14 +177,40 @@ begin
     vArgs[i] := Args[i-1];
   end;
 
-  //Call the original (virtual) method if:
-  //-we are not a stub
-  //-we have not defined any behavior (of course we count hits)
-  //-the actual method is not an abstract method
-  //-we are not setting up
-  DoInvoke := not (FIsStubOnly or (methodData.FindBestBehavior(vArgs) <> nil) or Method.IsAbstract or (FSetupMode <> TSetupMode.None));
+  if SetupPendingHere then
+  begin
+    //Completing a setup begun on this thread: the real method never runs, and no behaviour is looked for.
+    //Looking first ran the existing behaviours' matchers against the When arguments, placeholders a matcher may
+    //not expect.  ( DoInvoke takes the shared lock. )
+    DoInvoke := False;
+    Self.DoInvoke(Method,vArgs,Result);
+  end
+  else
+  begin
+    //As TProxy<T>.DoInvoke: pending matchers go only while no setup is pending on this thread
+    TMatcherFactory.ClearMatchersOutsideSetup;
 
-  Self.DoInvoke(Method,vArgs,Result);
+    pInfo := TypeInfo(T);
+    methodData := GetMethodData(method.Name,pInfo.NameStr);
+
+    //The behaviour is found once and handed on: finding it here and again inside RecordHit ran every user
+    //matcher twice per call.  Found under the shared lock; RecordHitWithBehavior takes it for its bookkeeping and
+    //runs the behaviour outside it.
+    EnterMockLock;
+    try
+      behavior := methodData.FindBestBehavior(vArgs);
+    finally
+      LeaveMockLock;
+    end;
+
+    //Call the original (virtual) method if:
+    //-we are not a stub
+    //-we have not defined any behavior (of course we count hits)
+    //-the actual method is not an abstract method
+    DoInvoke := not (FIsStubOnly or (behavior <> nil) or Method.IsAbstract);
+
+    methodData.RecordHitWithBehavior(vArgs, Method.ReturnType, Method, behavior, Result);
+  end;
 
   for i := 1 to l do
   begin

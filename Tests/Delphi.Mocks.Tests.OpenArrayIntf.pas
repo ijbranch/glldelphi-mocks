@@ -5,6 +5,11 @@ interface
 uses
   DUnitX.TestFramework;
 
+const
+  /// <summary>Why the open array tests are ignored; see the suite's README.md.</summary>
+  OPEN_ARRAY_RTTI_BUG = 'BUG: System.Rtti TInvokeInfo.LoadArguments caches an open array''s type info in the shared '
+    + 'FParams and reads it freed on later calls; open arrays reach the mock without elements';
+
 type
   {$M+}
   /// <summary>Tests mocking methods that take arrays.</summary>
@@ -13,7 +18,7 @@ type
   published
     /// <summary>Proves a setup on an open array parameter followed by another parameter matches the call and
     /// returns its value.</summary>
-    [Ignore('BUG: System.Rtti TInvokeInfo.LoadArguments caches an open array''s type info in the shared FParams and reads it freed on later calls; open arrays reach the mock without elements')]
+    [Ignore(OPEN_ARRAY_RTTI_BUG)]
     procedure TestMyMethodDynamicArray;
     /// <summary>Proves a setup on a typed dynamic array parameter matches the call and returns its value.
     /// </summary>
@@ -21,12 +26,12 @@ type
     /// <summary>Proves setups kept for open arrays of different contents each match only their own contents, and
     /// a call with other contents falls to the default.  A setup keeps the call's argument past the call, when the
     /// RTL has freed the open array's type information; read from freed memory it matched nothing.</summary>
-    [Ignore('BUG: System.Rtti TInvokeInfo.LoadArguments caches an open array''s type info in the shared FParams and reads it freed on later calls; open arrays reach the mock without elements')]
+    [Ignore(OPEN_ARRAY_RTTI_BUG)]
     procedure TestOpenArraySetupsMatchByContents;
     /// <summary>Proves expectations kept for open arrays of different contents are told apart when defined, are
     /// not met by a call with other contents and are met by calls with their own ( the expectation path keeps its
     /// own copy of the arguments ).</summary>
-    [Ignore('BUG: System.Rtti TInvokeInfo.LoadArguments caches an open array''s type info in the shared FParams and reads it freed on later calls; open arrays reach the mock without elements')]
+    [Ignore(OPEN_ARRAY_RTTI_BUG)]
     procedure TestOpenArrayExpectationMatchesByContents;
     /// <summary>Proves setups and an expectation kept for a static array argument match by contents: the kept copy
     /// is a TArray&lt;TValue&gt; of the elements ( DetachedArgValue ), compared element by element with the call's

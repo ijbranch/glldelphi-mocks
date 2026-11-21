@@ -52,13 +52,50 @@ function GetVirtualMethodCount(AClass: TClass): Integer;
 /// <summary>Formats arguments for a report.</summary>
 /// <param name="Args">The arguments.</param>
 /// <param name="OffSet">How many leading arguments to skip.</param>
-/// <returns>The arguments, comma separated in parentheses.</returns>
+/// <returns>The arguments, comma separated in parentheses; strings and characters quoted.</returns>
 function ArgsToString(const Args: TArray<TValue>; OffSet: Integer = 0): string;
+
+/// <summary>Enters the lock every mock shares, so a mock can be called from several threads at once.  One lock for
+/// all of them, not one each: a proxy asks its relatives for interfaces, and per-proxy locks taken in different
+/// orders by two threads could deadlock.  Re-entrant, so a WillExecute may call a mock on the same thread.  Pair it
+/// with LeaveMockLock in a try..finally.</summary>
+procedure EnterMockLock;
+
+/// <summary>Leaves the lock EnterMockLock entered.</summary>
+procedure LeaveMockLock;
+
+/// <summary>Builds the message of a failed Verify.</summary>
+/// <param name="AMessage">The caller's message, placed first; may be empty, and then adds no blank line.</param>
+/// <param name="ATypeName">The mocked type, so a report from one of several mocks says which.</param>
+/// <param name="ADetail">The unmet expectations.</param>
+/// <returns>The message.</returns>
+function VerificationReport(const AMessage, ATypeName, ADetail : string) : string;
 
 implementation
 
 uses
   System.SysUtils;
+
+var
+  /// <summary>The object whose monitor is the shared mock lock.</summary>
+  GMockLock : TObject;
+
+procedure EnterMockLock;
+begin
+  TMonitor.Enter( GMockLock );
+end;
+
+procedure LeaveMockLock;
+begin
+  TMonitor.Exit( GMockLock );
+end;
+
+function VerificationReport(const AMessage, ATypeName, ADetail : string) : string;
+begin
+  Result := Format( '[%s] has unmet expectations:', [ATypeName] ) + sLineBreak + ADetail;
+  if AMessage <> '' then
+    Result := AMessage + sLineBreak + Result;
+end;
 
 type
   /// <summary>A class that adds nothing to TObject: the baseline a mockable class must exceed.</summary>
@@ -106,9 +143,19 @@ begin
   begin
     if (result <> EmptyStr) then
       result := result + ', ';
-    result := result + Args[i].ToString;
+    //Quoted, so an empty string shows as '' rather than vanishing from the report
+    if Args[i].Kind in [tkChar, tkWChar, tkString, tkLString, tkWString, tkUString] then
+      result := result + QuotedStr(Args[i].ToString)
+    else
+      result := result + Args[i].ToString;
   end;
   result := '( ' + result + ' )';
 end;
+
+initialization
+  GMockLock := TObject.Create;
+
+finalization
+  GMockLock.Free;
 
 end.

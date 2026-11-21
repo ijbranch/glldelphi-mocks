@@ -35,14 +35,8 @@ Build/TestAndBuild.fb7lck
 *.drc
 *.map
 __history/**
-**.exe
-**.dcu
-*.local
-*.identcache
 *.xml
 *.fb8lck
 *.fbl8
 *.fbpbrk
-Tests/Delphi.Mocks.Tests.res
-Tests/Delphi.Mocks.Tests.res
 *.rsm
