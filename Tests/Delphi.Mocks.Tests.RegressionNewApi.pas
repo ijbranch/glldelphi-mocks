@@ -25,10 +25,10 @@ uses
   Delphi.Mocks;
 
 type
-  {$M+}
+{$M+}
   /// <summary>An interface to mock.</summary>
   IRegNewApi = interface
-    ['{3E1F7A20-5C4B-4D8A-9E2F-6B7C8D9E0A21}']
+    [ '{3E1F7A20-5C4B-4D8A-9E2F-6B7C8D9E0A21}' ]
     /// <summary>A procedure.</summary>
     procedure Ping;
     /// <summary>Another procedure.</summary>
@@ -37,7 +37,7 @@ type
 
   /// <summary>A second interface, added with Implement.</summary>
   IRegNewApiChild = interface
-    ['{3E1F7A20-5C4B-4D8A-9E2F-6B7C8D9E0A22}']
+    [ '{3E1F7A20-5C4B-4D8A-9E2F-6B7C8D9E0A22}' ]
     /// <summary>A procedure.</summary>
     procedure Child;
   end;
@@ -47,13 +47,13 @@ type
   public
     /// <summary>A virtual function.</summary>
     /// <returns>Always 1.</returns>
-    function Value : Integer; virtual;
+    function Value: Integer; virtual;
   end;
-  {$M-}
+{$M-}
 
-  {$M+}
+{$M+}
   /// <summary>Tests of the API the 2026-10-13 fixes introduced.</summary>
-  [TestFixture]
+  [ TestFixture ]
   TRegressionNewApiTests = class
   published
     /// <summary>Proves the call log numbers calls from 1, keeps each method's first call only, ignores case, and
@@ -74,7 +74,7 @@ type
     /// reset do not stop the same order being met after it.</summary>
     procedure ResetCalls_Clears_Call_Order;
   end;
-  {$M-}
+{$M-}
 
 implementation
 
@@ -88,69 +88,74 @@ uses
 
 function TRegNewApiClass.Value: Integer;
 begin
-  Result := 1;
+  Result            := 1;
 end;
 
 { TRegressionNewApiTests }
 
 procedure TRegressionNewApiTests.CallLog_Records_First_Calls_Case_Insensitively_And_Clears;
-var
-  log : ICallLog;
 begin
-  log := TCallLog.Create;
-  Assert.AreEqual<Int64>(0, log.LastSequence);
-  Assert.AreEqual<Int64>(0, log.FirstCall('Open'));
+  var intfLog: ICallLog := TCallLog.Create;
+  Assert.AreEqual<Int64>( 0, intfLog.LastSequence );
+  Assert.AreEqual<Int64>( 0, intfLog.FirstCall( 'Open' ) );
 
-  Assert.AreEqual<Int64>(1, log.RecordCall('Open'));
-  Assert.AreEqual<Int64>(2, log.RecordCall('Read'));
-  Assert.AreEqual<Int64>(3, log.RecordCall('OPEN'));
+  Assert.AreEqual<Int64>( 1, intfLog.RecordCall( 'Open' ) );
+  Assert.AreEqual<Int64>( 2, intfLog.RecordCall( 'Read' ) );
+  Assert.AreEqual<Int64>( 3, intfLog.RecordCall( 'OPEN' ) );
 
-  Assert.AreEqual<Int64>(1, log.FirstCall('open'), 'The first call is kept, whatever the case');
-  Assert.AreEqual<Int64>(2, log.FirstCall('Read'));
-  Assert.AreEqual<Int64>(3, log.LastSequence);
+  Assert.AreEqual<Int64>( 1, intfLog.FirstCall( 'open' ), 'The first call is kept, whatever the case' );
+  Assert.AreEqual<Int64>( 2, intfLog.FirstCall( 'Read' ) );
+  Assert.AreEqual<Int64>( 3, intfLog.LastSequence );
 
-  log.Clear;
-  Assert.AreEqual<Int64>(0, log.LastSequence);
-  Assert.AreEqual<Int64>(0, log.FirstCall('Open'));
-  Assert.AreEqual<Int64>(1, log.RecordCall('Read'), 'Numbering restarts after Clear');
+  intfLog.Clear;
+  Assert.AreEqual<Int64>( 0, intfLog.LastSequence );
+  Assert.AreEqual<Int64>( 0, intfLog.FirstCall( 'Open' ) );
+  Assert.AreEqual<Int64>( 1, intfLog.RecordCall( 'Read' ), 'Numbering restarts after Clear' );
 end;
 
 procedure TRegressionNewApiTests.IVerify_ClearExpectations_Clears_Mock_And_Children;
 var
-  mock : TMock<IRegNewApi>;
-  verify : IVerify;
+  intfVerify        : IVerify;
 begin
-  mock := TMock<IRegNewApi>.Create;
-  mock.Implement<IRegNewApiChild>;
-  mock.Setup.Expect.Once('Ping');
-  mock.Setup<IRegNewApiChild>.Expect.Once('Child');
-  Assert.WillRaise(procedure begin mock.VerifyAll end, EMockVerificationException);
+  var rMock: TMock<IRegNewApi> := TMock<IRegNewApi>.Create;
+  rMock.Implement<IRegNewApiChild>;
+  rMock.Setup.Expect.Once( 'Ping' );
+  rMock.Setup<IRegNewApiChild>.Expect.Once( 'Child' );
+  Assert.WillRaise( procedure
+    begin
+      rMock.VerifyAll
+    end, EMockVerificationException );
 
-  Assert.IsTrue(Supports(mock.Setup, IVerify, verify));
-  verify.ClearExpectations;
-  verify := nil;
-  Assert.WillNotRaiseAny(procedure begin mock.VerifyAll end);
+  Assert.IsTrue( Supports( rMock.Setup, IVerify, intfVerify ) );
+  intfVerify.ClearExpectations;
+  intfVerify        := nil;
+  Assert.WillNotRaiseAny( procedure
+    begin
+      rMock.VerifyAll
+    end );
 end;
 
 procedure TRegressionNewApiTests.AutoMockContainer_Mock_By_TypeInfo_Returns_Usable_Proxy;
 var
-  container : TAutoMockContainer;
-  proxy : IProxy;
-  instance : IRegNewApi;
+  intfInstance      : IRegNewApi;
 begin
-  container := TAutoMockContainer.Create;
-  proxy := container.Mock(TypeInfo(IRegNewApi));
-  Assert.IsNotNull(proxy);
-  Assert.IsTrue(Supports(proxy.ProxyInterface, IRegNewApi, instance));
-  Assert.WillNotRaiseAny(procedure begin instance.Ping end);
+  var rContainer: TAutoMockContainer := TAutoMockContainer.Create;
+  var intfProxy: IProxy := rContainer.Mock( TypeInfo( IRegNewApi ) );
+  Assert.IsNotNull( intfProxy );
+  Assert.IsTrue( Supports( intfProxy.ProxyInterface, IRegNewApi, intfInstance ) );
+  Assert.WillNotRaiseAny( procedure
+    begin
+      intfInstance.Ping
+    end );
 end;
 
 procedure TRegressionNewApiTests.AutoMock_Of_Class_Raises_EMockException;
-var
-  container : TAutoMockContainer;
 begin
-  container := TAutoMockContainer.Create;
-  Assert.WillRaise(procedure begin container.Mock(TypeInfo(TRegNewApiClass)) end, EMockException);
+  var rContainer: TAutoMockContainer := TAutoMockContainer.Create;
+  Assert.WillRaise( procedure
+    begin
+      rContainer.Mock( TypeInfo( TRegNewApiClass ) )
+    end, EMockException );
 end;
 
 procedure TRegressionNewApiTests.MatcherFactory_ClearMatchers_Discards_Pending_Matchers;
@@ -158,26 +163,31 @@ begin
   It0.IsAny<Integer>;
   It1.IsAny<string>;
   TMatcherFactory.ClearMatchers;
-  Assert.AreEqual<NativeInt>(0, Length(TMatcherFactory.GetMatchers));
+  Assert.AreEqual<NativeInt>( 0, Length( TMatcherFactory.GetMatchers ) );
 end;
 
 procedure TRegressionNewApiTests.ResetCalls_Clears_Call_Order;
-var
-  mock : TMock<IRegNewApi>;
 begin
-  mock := TMock<IRegNewApi>.Create;
-  mock.Setup.Expect.Before('Ping', 'Pong');
-  mock.Instance.Pong;
-  mock.Instance.Ping;
-  Assert.WillRaise(procedure begin mock.Verify end, EMockVerificationException);
+  var rMock: TMock<IRegNewApi> := TMock<IRegNewApi>.Create;
+  rMock.Setup.Expect.Before( 'Ping', 'Pong' );
+  rMock.Instance.Pong;
+  rMock.Instance.Ping;
+  Assert.WillRaise( procedure
+    begin
+      rMock.Verify
+    end, EMockVerificationException );
 
-  mock.ResetCalls;
-  mock.Instance.Ping;
-  mock.Instance.Pong;
-  Assert.WillNotRaiseAny(procedure begin mock.Verify end);
+  rMock.ResetCalls;
+  rMock.Instance.Ping;
+  rMock.Instance.Pong;
+  Assert.WillNotRaiseAny( procedure
+    begin
+      rMock.Verify
+    end );
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TRegressionNewApiTests);
+  TDUnitX.RegisterTestFixture( TRegressionNewApiTests );
 
 end.
+
